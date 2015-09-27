@@ -77,30 +77,39 @@ public:
         kinematicState.reset(new robot_state::RobotState(kinematicModel));
 	}
     
-    double calculateArmLength() {
-        // TODO: Calculate arm length here
-        return 3;
-    }
-    
     void load() {
         ROS_INFO("Loading kinematics cache");
-
-        double discretization;
-        pnh.param<double>("resolution", resolution, RESOLUTION_DEFAULT);
-        
-        // TODO: Fetch the robot model
         
         // Determine length of arm
-        double maxDistance = calculateArmLength();
+        double maxDistance = jointModelGroup->getMaximumExtent();
         
         // Iterate through grid. Start at negative x,y,z and iterate
         // to end at positive x,y,z. All locations are in the frame
         // of the base of the arm.
+        kinematics::KinematicsQueryOptions opts;
+        double timeout = 180;
+        vector<double> initialPositions(jointModelGroup->getJointModels().size());
+        
         for (double x = -maxDistance; x <= maxDistance; x += resolution) {
             for (double y = -maxDistance; y <= maxDistance; y += resolution) {
                 for (double z = -maxDistance; z <= maxDistance; z += resolution) {
                     ROS_INFO("Attempting to create IK solution at %f, %f, %f", x, y, z);
-                    // TODO: Execute IK
+                    geometry_msgs::Pose target;
+                    target.position.x = x;
+                    target.position.y = y;
+                    target.position.z = z;
+                    target.orientation.x = 0.0;
+                    target.orientation.y = 0.0;
+                    target.orientation.z = 0.0;
+                    target.orientation.w = 1.0;
+                    vector<double> solution(jointModelGroup->getJointModels().size());
+                    moveit_msgs::MoveItErrorCodes error;
+                    kinematicsSolver->searchPositionIK(target, initialPositions, timeout, solution, error, opts);
+                    if(error.val == moveit_msgs::MoveItErrorCodes::SUCCESS) {
+                        ROS_INFO("Solution found");
+                    } else {
+                        ROS_INFO("IK failed");
+                    }
                     // TODO: Store result in Mongo
                     // TODO: Store motion plan?
                     // TODO: Store duration?
