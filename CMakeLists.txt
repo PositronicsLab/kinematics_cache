@@ -5,9 +5,13 @@ project(kinematics_cache)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
   rospy
   std_msgs
+  eigen
+  moveit_core
+  pluginlib
+  roscpp
+  moveit_ros_planning
 )
 
 ## System dependencies are found with CMake's conventions
@@ -115,7 +119,9 @@ catkin_package(
 # include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
+  ${EIGEN_INCLUDE_DIRS}
 )
+add_definitions(${EIGEN_DEFINITIONS})
 
 ## Declare a C++ library
 # add_library(kinematics_cache

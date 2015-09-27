@@ -45,11 +45,22 @@
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>mongodb_store</build_depend>
+  <build_depend>eigen</build_depend>
+  <build_depend>pluginlib</build_depend>
+  <build_depend>moveit_core</build_depend>
+  <build_depend>rdf_loader</build_depend>
+  <build_depend>moveit_ros_planning</build_depend>
+    
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>mongodb_store</run_depend>
-
+  <run_depend>eigen</run_depend>
+  <run_depend>pluginlib</run_depend>
+  <run_depend>moveit_core</run_depend>
+  <run_depend>rdf_loader</run_depend>
+  <run_depend>moveit_ros_planning</run_depend>
+  
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->
