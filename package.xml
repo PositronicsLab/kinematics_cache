@@ -50,7 +50,8 @@
   <build_depend>moveit_core</build_depend>
   <build_depend>rdf_loader</build_depend>
   <build_depend>moveit_ros_planning</build_depend>
-    
+  <build_depend>tf</build_depend>
+  
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
@@ -60,7 +61,9 @@
   <run_depend>moveit_core</run_depend>
   <run_depend>rdf_loader</run_depend>
   <run_depend>moveit_ros_planning</run_depend>
-  
+  <run_depend>pr2_moveit_ikfast_distance_right_arm_plugin</run_depend>
+  <run_depend>pr2_moveit_ikfast_distance_left_arm_plugin</run_depend>
+  <run_depend>tf</run_depend>
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->

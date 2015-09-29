@@ -12,6 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
   pluginlib
   roscpp
   moveit_ros_planning
+  mongodb_store
+  tf
 )
 
 ## System dependencies are found with CMake's conventions

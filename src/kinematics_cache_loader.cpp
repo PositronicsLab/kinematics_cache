@@ -1,6 +1,10 @@
 #include <ros/ros.h>
 #include <boost/shared_ptr.hpp>
 
+// Ensure this is defined before boost since mongodb uses version
+// 2 and both cannot be simulataneously defined.
+#define BOOST_FILESYSTEM_VERSION 2
+
 // MoveIt!
 #include <moveit/rdf_loader/rdf_loader.h>
 #include <urdf/model.h>
@@ -11,11 +15,17 @@
 #include <pluginlib/class_loader.h>
 #include <moveit/robot_model/joint_model_group.h>
 
+#include <tf/transform_listener.h>
+#include <mongodb_store/message_store.h>
+#include <trajectory_msgs/JointTrajectoryPoint.h>
+
 namespace {
 using namespace std;
+using namespace mongodb_store;
 
 static const double RESOLUTION_DEFAULT = 0.01;
-    
+static const double IK_SEARCH_RESOLUTION = 0.001;
+
 class KinematicsCacheLoader {
 
 private:
@@ -26,6 +36,8 @@ private:
 	//! Private nh
 	ros::NodeHandle pnh;
 
+    tf::TransformListener tf;
+    
     double resolution;
     
     string kinematicsSolverName;
@@ -43,28 +55,28 @@ private:
     kinematics::KinematicsBasePtr kinematicsSolver;
     
     robot_state::RobotStatePtr kinematicState;
-    
+        
     const robot_model::JointModelGroup* jointModelGroup;
     
 public:
 	KinematicsCacheLoader() :
 		pnh("~") {
         pnh.param("resolution", resolution, RESOLUTION_DEFAULT);
-        pnh.param<string>("kinematics_solver_name", kinematicsSolverName, "pr2_arm_kinematics/PR2ArmKinematicsPlugin");
+        pnh.param<string>("kinematics_solver_name", kinematicsSolverName, "pr2_right_arm_kinematics/IKFastDistanceKinematicsPlugin");
         pnh.param<string>("group_name", groupName, "right_arm");
         pnh.param<string>("base_frame", baseFrame, "torso_lift_link");
         pnh.param<string>("tip_link", tipLink, "r_wrist_roll_link");
-            
-        kinematicsLoader.reset(new pluginlib::ClassLoader<kinematics::KinematicsBase>("kinematics_base", "kinematics::KinematicsBase"));
+                
+        kinematicsLoader.reset(new pluginlib::ClassLoader<kinematics::KinematicsBase>("moveit_core", "kinematics::KinematicsBase"));
         try {
-            kinematicsSolver.reset(kinematicsLoader->createClassInstance(kinematicsSolverName));
+            kinematicsSolver = kinematicsLoader->createInstance(kinematicsSolverName);
         } catch(pluginlib::PluginlibException& ex) //handle the class failing to load
         {
             ROS_ERROR("The plugin failed to load. Error: %s", ex.what());
             throw ex;
         }
 
-        if(!kinematicsSolver->initialize("robot_description", groupName, baseFrame, tipLink, RESOLUTION_DEFAULT)) {
+        if(!kinematicsSolver->initialize("robot_description", groupName, baseFrame, tipLink, IK_SEARCH_RESOLUTION)) {
             ROS_ERROR("Could not initialize solver");   
         }
   
@@ -79,20 +91,33 @@ public:
     
     void load() {
         ROS_INFO("Loading kinematics cache");
+        MessageStoreProxy mdb(nh);
         
-        // Determine length of arm
-        double maxDistance = jointModelGroup->getMaximumExtent();
+        // TODO: Calculate dynamically from the model.
+        double maxDistance = 0.708;
         
         // Iterate through grid. Start at negative x,y,z and iterate
         // to end at positive x,y,z. All locations are in the frame
         // of the base of the arm.
         kinematics::KinematicsQueryOptions opts;
         double timeout = 180;
-        vector<double> initialPositions(jointModelGroup->getJointModels().size());
+        
+        // TODO: Fix
+        vector<double> initialPositions(7);
+        ROS_INFO("BASE FRAME: %s", kinematicsSolver->getBaseFrame().c_str());
         
         for (double x = -maxDistance; x <= maxDistance; x += resolution) {
             for (double y = -maxDistance; y <= maxDistance; y += resolution) {
                 for (double z = -maxDistance; z <= maxDistance; z += resolution) {
+                    if (!ros::ok()) {
+                        ROS_WARN("Interrupt requested");
+                        return;
+                    }
+                    
+                    if (sqrt(x * x + y * y + z * z) > maxDistance) {
+                        ROS_DEBUG("Skipping point exceeding max distance");
+                        continue;
+                    }
                     ROS_INFO("Attempting to create IK solution at %f, %f, %f", x, y, z);
                     geometry_msgs::Pose target;
                     target.position.x = x;
@@ -102,15 +127,36 @@ public:
                     target.orientation.y = 0.0;
                     target.orientation.z = 0.0;
                     target.orientation.w = 1.0;
-                    vector<double> solution(jointModelGroup->getJointModels().size());
+                    
+                    ros::Time now = ros::Time::now();
+                    // TODO: Not exactly the right source frame
+                    tf.waitForTransform("/r_shoulder_pan_link", kinematicsSolver->getBaseFrame(),
+                              now, ros::Duration(10.0));
+                              
+                    // Transform
+                    geometry_msgs::PoseStamped targetInBaseFrame;
+                    geometry_msgs::PoseStamped targetStamped;
+                    targetStamped.pose = target;
+                    targetStamped.header.stamp = now;
+                    targetStamped.header.frame_id = "/r_shoulder_pan_link";
+                    
+                    tf.transformPose(kinematicsSolver->getBaseFrame(), targetStamped, targetInBaseFrame);
+                    
+                    // TODO: Fix
+                    vector<double> solution(7);
                     moveit_msgs::MoveItErrorCodes error;
-                    kinematicsSolver->searchPositionIK(target, initialPositions, timeout, solution, error, opts);
+                    kinematicsSolver->searchPositionIK(targetInBaseFrame.pose, initialPositions, timeout, solution, error, opts);
                     if(error.val == moveit_msgs::MoveItErrorCodes::SUCCESS) {
                         ROS_INFO("Solution found");
                     } else {
-                        ROS_INFO("IK failed");
+                        ROS_INFO("IK failed %i", error.val);
+                        continue;
                     }
-                    // TODO: Store result in Mongo
+                    
+                    trajectory_msgs::JointTrajectoryPoint msg;
+                    msg.positions = solution;
+                    mdb.insert(msg);
+                    
                     // TODO: Store motion plan?
                     // TODO: Store duration?
                 }
