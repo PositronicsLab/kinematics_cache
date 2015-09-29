@@ -23,8 +23,8 @@ namespace {
 using namespace std;
 using namespace mongodb_store;
 
-static const double RESOLUTION_DEFAULT = 0.01;
-static const double IK_SEARCH_RESOLUTION = 0.001;
+static const double RESOLUTION_DEFAULT = 0.1; /* 0.01 */
+static const double IK_SEARCH_RESOLUTION = 0.01; /** 0.001 */
 
 class KinematicsCacheLoader {
 
@@ -102,10 +102,9 @@ public:
         kinematics::KinematicsQueryOptions opts;
         double timeout = 180;
         
-        // TODO: Fix
-        vector<double> initialPositions(7);
-        ROS_INFO("BASE FRAME: %s", kinematicsSolver->getBaseFrame().c_str());
-        
+        // TODO: Not exactly the right source frame
+        vector<double> initialPositions(jointModelGroup->getActiveJointModels().size());
+        const string& searchFrame = jointModelGroup->getLinkModelNames()[0];
         for (double x = -maxDistance; x <= maxDistance; x += resolution) {
             for (double y = -maxDistance; y <= maxDistance; y += resolution) {
                 for (double z = -maxDistance; z <= maxDistance; z += resolution) {
@@ -118,7 +117,7 @@ public:
                         ROS_DEBUG("Skipping point exceeding max distance");
                         continue;
                     }
-                    ROS_INFO("Attempting to create IK solution at %f, %f, %f", x, y, z);
+                    ROS_DEBUG("Attempting to create IK solution at %f, %f, %f", x, y, z);
                     geometry_msgs::Pose target;
                     target.position.x = x;
                     target.position.y = y;
@@ -129,8 +128,8 @@ public:
                     target.orientation.w = 1.0;
                     
                     ros::Time now = ros::Time::now();
-                    // TODO: Not exactly the right source frame
-                    tf.waitForTransform("/r_shoulder_pan_link", kinematicsSolver->getBaseFrame(),
+
+                    tf.waitForTransform(searchFrame, baseFrame,
                               now, ros::Duration(10.0));
                               
                     // Transform
@@ -138,18 +137,17 @@ public:
                     geometry_msgs::PoseStamped targetStamped;
                     targetStamped.pose = target;
                     targetStamped.header.stamp = now;
-                    targetStamped.header.frame_id = "/r_shoulder_pan_link";
+                    targetStamped.header.frame_id = searchFrame;
                     
-                    tf.transformPose(kinematicsSolver->getBaseFrame(), targetStamped, targetInBaseFrame);
+                    tf.transformPose(baseFrame, targetStamped, targetInBaseFrame);
                     
-                    // TODO: Fix
-                    vector<double> solution(7);
+                    vector<double> solution(jointModelGroup->getActiveJointModels().size());
                     moveit_msgs::MoveItErrorCodes error;
                     kinematicsSolver->searchPositionIK(targetInBaseFrame.pose, initialPositions, timeout, solution, error, opts);
                     if(error.val == moveit_msgs::MoveItErrorCodes::SUCCESS) {
-                        ROS_INFO("Solution found");
+                        ROS_DEBUG("Solution found");
                     } else {
-                        ROS_INFO("IK failed %i", error.val);
+                        ROS_DEBUG("IK failed %i", error.val);
                         continue;
                     }
                     
@@ -170,7 +168,6 @@ public:
 int main(int argc, char** argv) {
 	ros::init(argc, argv, "kinematics_cache_loader");
 
-	KinematicsCacheLoader kcl;
-        kcl.load();
-	ros::spin();
+    KinematicsCacheLoader kcl;
+    kcl.load();
 }
