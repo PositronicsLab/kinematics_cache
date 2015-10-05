@@ -17,13 +17,13 @@
 
 #include <tf/transform_listener.h>
 #include <mongodb_store/message_store.h>
-#include <trajectory_msgs/JointTrajectoryPoint.h>
+#include <kinematics_cache/IK.h>
 
 namespace {
 using namespace std;
 using namespace mongodb_store;
 
-static const double RESOLUTION_DEFAULT = 0.1; /* 0.01 */
+static const double RESOLUTION_DEFAULT = 0.1; /* Default value: 0.01 */
 static const double IK_SEARCH_RESOLUTION = 0.01; /** 0.001 */
 
 class KinematicsCacheLoader {
@@ -103,10 +103,13 @@ public:
         double timeout = 180;
         
         // TODO: Not exactly the right source frame
+        unsigned int numLoaded = 0;
         vector<double> initialPositions(jointModelGroup->getActiveJointModels().size());
         const string& searchFrame = jointModelGroup->getLinkModelNames()[0];
         for (double x = -maxDistance; x <= maxDistance; x += resolution) {
+            ROS_INFO("Incrementing the x search paramter. Current X value is %f. Maximum value is: %f. Current found solutions is %u", x, maxDistance, numLoaded);
             for (double y = -maxDistance; y <= maxDistance; y += resolution) {
+                ROS_INFO("Incrementing the y search paramter. Current Y value is %f. Maximum value is: %f. Current found solutions is %u", y, maxDistance, numLoaded);
                 for (double z = -maxDistance; z <= maxDistance; z += resolution) {
                     if (!ros::ok()) {
                         ROS_WARN("Interrupt requested");
@@ -151,8 +154,11 @@ public:
                         continue;
                     }
                     
-                    trajectory_msgs::JointTrajectoryPoint msg;
+                    numLoaded++;
+                    kinematics_cache::IK msg;
                     msg.positions = solution;
+                    msg.group = groupName;
+                    msg.pose = targetStamped;
                     mdb.insert(msg);
                     
                     // TODO: Store motion plan?
@@ -160,7 +166,7 @@ public:
                 }
             }
         }
-        ROS_INFO("Completed loading kinematics cache");
+        ROS_INFO("Completed loading kinematics cache. Loaded %u entries.", numLoaded);
     }
 };
 }
