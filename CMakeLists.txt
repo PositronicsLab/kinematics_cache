@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   pluginlib
   roscpp
   moveit_ros_planning
+  moveit_ros_planning_interface
   mongodb_store
   tf
 )
