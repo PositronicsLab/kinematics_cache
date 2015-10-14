@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <kinematics_cache/IK.h>
+#include <kinematics_cache/IKQuery.h>
 #include <mongodb_store/message_store.h>
 #include <visualization_msgs/Marker.h>
 
@@ -30,6 +31,8 @@ private:
     //! Base frame for IK
     string baseFrame;
     
+    //! IK Service
+    ros::ServiceServer ikService;
 public:
 	KinematicsCacheNode() :
 		pnh("~"), mdb(nh) {
@@ -38,8 +41,12 @@ public:
          
          allIkPub = nh.advertise<visualization_msgs::Marker>(
 				"/kinematics_cache_node/known_ik_positions_perm", 1);
+        
+        ikService = nh.advertiseService("kinematics_cache/ik",
+            &KinematicsCacheNode::query, this);
 	}
     
+private:
     void visualize(const string group, const double maxTime = 60.0) {
         vector<boost::shared_ptr<kinematics_cache::IK> > ikPositions = queryAll(group, maxTime);
         ROS_INFO("Found %lu results", ikPositions.size());
@@ -83,7 +90,18 @@ public:
         ROS_WARN("Query failed. Returned empty result");
         return vector<boost::shared_ptr<kinematics_cache::IK> >();
     }
-     
+    
+    bool query(kinematics_cache::IKQuery::Request& req,
+               kinematics_cache::IKQuery::Response& res) {
+        boost::shared_ptr<kinematics_cache::IK> result = query(req.group, req.pose);
+        if (result.get() == NULL) {
+            ROS_INFO("Failed to find IK result for service call");
+            return false;
+        }
+        res.positions = result->positions;
+        return true;
+    }
+    
     boost::shared_ptr<kinematics_cache::IK> query(const std::string group,
         const geometry_msgs::PoseStamped pose) {
         // Do not perform IK, as it is a footgun for performance
@@ -122,6 +140,8 @@ public:
         ROS_WARN("Query failed. Returned empty result");
         return boost::shared_ptr<kinematics_cache::IK>();
     }
+    
+    
 };
 }
 
@@ -129,8 +149,6 @@ int main(int argc, char** argv) {
 	ros::init(argc, argv, "kinematics_cache_node");
 
 	KinematicsCacheNode kcn;
-    
-    // TODO: Remove
-    kcn.visualize("right_arm");
+
 	ros::spin();
 }
