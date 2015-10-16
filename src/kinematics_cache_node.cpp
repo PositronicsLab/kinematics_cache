@@ -40,9 +40,9 @@ public:
          pnh.param<string>("base_frame", baseFrame, "torso_lift_link");
          
          allIkPub = nh.advertise<visualization_msgs::Marker>(
-				"/kinematics_cache_node/known_ik_positions_perm", 1);
+				"/kinematics_cache/known_ik_positions_perm", 1);
         
-        ikService = nh.advertiseService("kinematics_cache/ik",
+        ikService = nh.advertiseService("/kinematics_cache/ik",
             &KinematicsCacheNode::query, this);
 	}
     

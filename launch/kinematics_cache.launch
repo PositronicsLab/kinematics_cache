@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="kinematics_cache" type="kinematics_cache_node" name="kinematics_cache_node">
+  </node>
+</launch>
