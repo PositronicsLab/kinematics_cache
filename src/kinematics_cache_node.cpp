@@ -99,6 +99,7 @@ private:
             return false;
         }
         res.positions = result->positions;
+        res.execution_time = result->execution_time;
         return true;
     }
     
