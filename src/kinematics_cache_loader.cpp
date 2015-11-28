@@ -24,8 +24,8 @@ namespace {
 using namespace std;
 using namespace mongodb_store;
 
-static const double RESOLUTION_DEFAULT = 0.1; /* Default value: 0.01 */
-static const double IK_SEARCH_RESOLUTION = 0.01; /** 0.001 */
+static const double RESOLUTION_DEFAULT = 0.1;
+static const double IK_SEARCH_RESOLUTION_DEFAULT = 0.01;
 
 class KinematicsCacheLoader {
 
@@ -38,47 +38,50 @@ private:
 	ros::NodeHandle pnh;
 
     tf::TransformListener tf;
-    
+
     double resolution;
-    
+
+    double ikSearchResolution;
+
     string kinematicsSolverName;
-            
+
     string groupName;
-    
+
     string baseFrame;
-    
+
     string tipLink;
-    
+
     robot_model::RobotModelPtr kinematicModel;
-    
+
     boost::shared_ptr<pluginlib::ClassLoader<kinematics::KinematicsBase> > kinematicsLoader;
-    
+
     kinematics::KinematicsBasePtr kinematicsSolver;
-    
+
     robot_state::RobotStatePtr kinematicState;
-        
+
     const robot_model::JointModelGroup* jointModelGroup;
-    
+
     vector<double> basePositions;
-    
+
     vector<double> jointMaxVelocities;
-    
+
     vector<double> jointMaxAccelerations;
-    
+
     ros::Publisher searchPub;
-     
+
     bool moveArmToBase;
-    
+
 public:
 	KinematicsCacheLoader() :
 		pnh("~") {
         pnh.param("resolution", resolution, RESOLUTION_DEFAULT);
+        pnh.param("ik_search_resolution", ikSearchResolution, IK_SEARCH_RESOLUTION_DEFAULT)
         pnh.param<string>("kinematics_solver_name", kinematicsSolverName, "pr2_right_arm_kinematics/IKFastDistanceKinematicsPlugin");
         pnh.param<string>("group_name", groupName, "right_arm");
         pnh.param<string>("base_frame", baseFrame, "torso_lift_link");
         pnh.param<string>("tip_link", tipLink, "r_wrist_roll_link");
         pnh.param<bool>("move_arm_to_base", moveArmToBase, false);
-        
+
         searchPub = nh.advertise<visualization_msgs::Marker>("search_position", 10);
         kinematicsLoader.reset(new pluginlib::ClassLoader<kinematics::KinematicsBase>("moveit_core", "kinematics::KinematicsBase"));
         try {
@@ -89,10 +92,10 @@ public:
             throw ex;
         }
 
-        if(!kinematicsSolver->initialize("robot_description", groupName, baseFrame, tipLink, IK_SEARCH_RESOLUTION)) {
-            ROS_ERROR("Could not initialize solver");   
+        if(!kinematicsSolver->initialize("robot_description", groupName, baseFrame, tipLink, ikSearchResolution)) {
+            ROS_ERROR("Could not initialize solver");
         }
-  
+
         rdf_loader::RDFLoader rdfLoader;
         const boost::shared_ptr<srdf::Model> &srdf = rdfLoader.getSRDF();
         const boost::shared_ptr<urdf::ModelInterface>& urdfModel = rdfLoader.getURDF();
@@ -100,17 +103,17 @@ public:
 
         jointModelGroup =  kinematicModel->getJointModelGroup(kinematicsSolver->getGroupName());
         kinematicState.reset(new robot_state::RobotState(kinematicModel));
-        
+
         // TODO: Make base positions configurable
         basePositions.resize(jointModelGroup->getActiveJointModels().size());
-        
+
         // Load limit data
         ROS_INFO("Loading joint limits");
         for (unsigned int i = 0; i < jointModelGroup->getActiveJointModels().size(); ++i) {
             const string& jointName = jointModelGroup->getActiveJointModels()[i]->getName();
             const string prefix = "robot_description_planning/joint_limits/" + jointName + "/";
             ROS_INFO_NAMED("kinematics_cache_loader", "Loading velocity and accleration limits for joint %s", jointName.c_str());
-        
+
             bool has_vel_limits;
             double max_velocity;
             if (nh.getParam(prefix + "has_velocity_limits", has_vel_limits) && has_vel_limits && nh.getParam(prefix + "max_velocity", max_velocity)) {
@@ -120,7 +123,7 @@ public:
                 ROS_INFO_NAMED("kinematics_cache_loader", "Setting max velocity to default");
                 jointMaxVelocities.push_back(100); /** TODO: use constant */
             }
-        
+
             bool has_acc_limits;
             double max_acc;
             if (nh.getParam(prefix + "has_acceleration_limits", has_acc_limits) && has_acc_limits && nh.getParam(prefix + "max_acceleration", max_acc)) {
@@ -132,7 +135,7 @@ public:
             }
         }
 	}
-    
+
     // TODO: This shares a lot of code with the moveit_plugin
     ros::Duration calcExecutionTime(const vector<double>& solution) {
         double longestTime = 0.0;
@@ -140,7 +143,7 @@ public:
             ROS_DEBUG_NAMED("kinematics_cache_loader", "Calculating distance for joint %u", i);
             double d = fabs(basePositions[i] - solution[i]);
             ROS_DEBUG_NAMED("kinematics_cache_loader", "Distance to travel is %f", d);
-                
+
             // Determine the max "bang-bang" distance.
             double x = 2.0 * jointMaxVelocities[i] / jointMaxAccelerations[i];
             double max_tri_distance = 0.5 * jointMaxVelocities[i] * x;
@@ -158,14 +161,14 @@ public:
                 t = sqrt(max_tri_distance / jointMaxAccelerations[i]) + x_rect;
                 ROS_DEBUG_NAMED("ikfast", "Trapezoidal solution for t is %f", t);
             }
-            
+
             longestTime = max(longestTime, t);
         }
-        
+
         ROS_DEBUG_NAMED("kinematics_cache_loader", "Execution time is %f", longestTime);
         return ros::Duration(longestTime);
     }
-    
+
     void publishSearchLocation(const string& frame, const geometry_msgs::Point& target) {
         ros::Time now = ros::Time::now();
         visualization_msgs::Marker points;
@@ -183,7 +186,7 @@ public:
         points.points.push_back(target);
         searchPub.publish(points);
     }
-    
+
     double calculateMaxDistance(const string& searchFrame) {
         // Calculate length of arm by setting all angle to 0 and performing IK
         vector<double> zeroPositions(jointModelGroup->getActiveJointModels().size());
@@ -193,7 +196,7 @@ public:
         kinematicsSolver->getPositionFK(endEffector, zeroPositions, results);
         ros::Time now = ros::Time::now();
         tf.waitForTransform(searchFrame, baseFrame, now, ros::Duration(10.0));
-        
+
         // Convert to search frame.
         geometry_msgs::PoseStamped resultInBaseFrameStamped;
         resultInBaseFrameStamped.pose = results[0];
@@ -201,12 +204,12 @@ public:
         resultInBaseFrameStamped.header.frame_id = baseFrame;
         geometry_msgs::PoseStamped resultInSearchFrame;
         tf.transformPose(searchFrame, resultInBaseFrameStamped, resultInSearchFrame);
-        
+
         // TODO: Remove
         publishSearchLocation(searchFrame, resultInSearchFrame.pose.position);
-        
+
         // Calculate the distance from the zero point.
-        return sqrt(pow(resultInSearchFrame.pose.position.x, 2) + 
+        return sqrt(pow(resultInSearchFrame.pose.position.x, 2) +
                     pow(resultInSearchFrame.pose.position.y, 2) +
                     pow(resultInSearchFrame.pose.position.z, 2));
     }
@@ -214,7 +217,7 @@ public:
         ROS_INFO("Loading kinematics cache");
         MessageStoreProxy mdb(nh);
         const string& searchFrame = jointModelGroup->getLinkModelNames()[0];
-        
+
         // Move to outstretched positions for easier visualization
         if (moveArmToBase) {
           moveit::planning_interface::MoveGroup group(groupName);
@@ -222,17 +225,17 @@ public:
           group.setJointValueTarget(zeroPositions);
           group.move();
         }
-        
+
         double maxDistance = calculateMaxDistance(searchFrame);
 
         ROS_INFO("Maximum distance is %f", maxDistance);
-        
+
         // Iterate through grid. Start at negative x,y,z and iterate
         // to end at positive x,y,z. All locations are in the frame
         // of the base of the arm.
         kinematics::KinematicsQueryOptions opts;
         double timeout = 180;
-        
+
         // TODO: Not exactly the right source frame
         unsigned int numLoaded = 0;
         vector<double> initialPositions(jointModelGroup->getActiveJointModels().size());
@@ -246,7 +249,7 @@ public:
                         ROS_WARN("Interrupt requested");
                         return;
                     }
-                    
+
                     if (sqrt(x * x + y * y + z * z) > maxDistance) {
                         ROS_DEBUG("Skipping point exceeding max distance");
                         continue;
@@ -260,22 +263,22 @@ public:
                     target.orientation.y = 0.0;
                     target.orientation.z = 0.0;
                     target.orientation.w = 1.0;
-                    
+
                     publishSearchLocation(searchFrame, target.position);
-                    
+
                     ros::Time now = ros::Time::now();
                     tf.waitForTransform(searchFrame, baseFrame,
                               now, ros::Duration(10.0));
-                              
+
                     // Transform
                     geometry_msgs::PoseStamped targetInBaseFrame;
                     geometry_msgs::PoseStamped targetStamped;
                     targetStamped.pose = target;
                     targetStamped.header.stamp = now;
                     targetStamped.header.frame_id = searchFrame;
-                    
+
                     tf.transformPose(baseFrame, targetStamped, targetInBaseFrame);
-                    
+
                     vector<double> solution(jointModelGroup->getActiveJointModels().size());
                     moveit_msgs::MoveItErrorCodes error;
                     kinematicsSolver->searchPositionIK(targetInBaseFrame.pose, initialPositions, timeout, solution, error, opts);
@@ -285,17 +288,17 @@ public:
                         ROS_DEBUG("IK failed %i", error.val);
                         continue;
                     }
-                    
+
                     numLoaded++;
-                    
-                    
+
+
                     kinematics_cache::IK msg;
                     msg.positions = solution;
                     msg.group = groupName;
                     msg.pose = targetStamped;
                     msg.execution_time = calcExecutionTime(solution);
                     mdb.insert(msg);
-                    
+
                     // TODO: Store motion plan?
                     // TODO: Store duration?
                 }
@@ -307,7 +310,7 @@ public:
 }
 
 int main(int argc, char** argv) {
-	ros::init(argc, argv, "kinematics_cache_loader");
+	ros::init(argc, argv, ros::this_node::getName());
 
     KinematicsCacheLoader kcl;
     kcl.load();
