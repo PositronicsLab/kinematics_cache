@@ -5,7 +5,7 @@
 // 2 and both cannot be simulataneously defined.
 #define BOOST_FILESYSTEM_VERSION 2
 
-// MoveIt!
+// MoveIt
 #include <moveit/rdf_loader/rdf_loader.h>
 #include <urdf/model.h>
 #include <srdfdom/model.h>
@@ -24,7 +24,7 @@ namespace {
 using namespace std;
 using namespace mongodb_store;
 
-static const double RESOLUTION_DEFAULT = 0.1;
+static const double RESOLUTION_DEFAULT = 0.01;
 static const double IK_SEARCH_RESOLUTION_DEFAULT = 0.01;
 
 class KinematicsCacheLoader {
@@ -75,7 +75,7 @@ public:
 	KinematicsCacheLoader() :
 		pnh("~") {
         pnh.param("resolution", resolution, RESOLUTION_DEFAULT);
-        pnh.param("ik_search_resolution", ikSearchResolution, IK_SEARCH_RESOLUTION_DEFAULT)
+        pnh.param("ik_search_resolution", ikSearchResolution, IK_SEARCH_RESOLUTION_DEFAULT);
         pnh.param<string>("kinematics_solver_name", kinematicsSolverName, "pr2_right_arm_kinematics/IKFastDistanceKinematicsPlugin");
         pnh.param<string>("group_name", groupName, "right_arm");
         pnh.param<string>("base_frame", baseFrame, "torso_lift_link");
@@ -108,29 +108,29 @@ public:
         basePositions.resize(jointModelGroup->getActiveJointModels().size());
 
         // Load limit data
-        ROS_INFO("Loading joint limits");
+        ROS_DEBUG("Loading joint limits");
         for (unsigned int i = 0; i < jointModelGroup->getActiveJointModels().size(); ++i) {
             const string& jointName = jointModelGroup->getActiveJointModels()[i]->getName();
             const string prefix = "robot_description_planning/joint_limits/" + jointName + "/";
-            ROS_INFO_NAMED("kinematics_cache_loader", "Loading velocity and accleration limits for joint %s", jointName.c_str());
+            ROS_DEBUG_NAMED("kinematics_cache_loader", "Loading velocity and accleration limits for joint %s", jointName.c_str());
 
             bool has_vel_limits;
             double max_velocity;
             if (nh.getParam(prefix + "has_velocity_limits", has_vel_limits) && has_vel_limits && nh.getParam(prefix + "max_velocity", max_velocity)) {
-                ROS_INFO_NAMED("kinematics_cache_loader", "Setting max velocity to %f", max_velocity);
+                ROS_DEBUG_NAMED("kinematics_cache_loader", "Setting max velocity to %f", max_velocity);
                 jointMaxVelocities.push_back(max_velocity);
             } else {
-                ROS_INFO_NAMED("kinematics_cache_loader", "Setting max velocity to default");
+                ROS_DEBUG_NAMED("kinematics_cache_loader", "Setting max velocity to default");
                 jointMaxVelocities.push_back(100); /** TODO: use constant */
             }
 
             bool has_acc_limits;
             double max_acc;
             if (nh.getParam(prefix + "has_acceleration_limits", has_acc_limits) && has_acc_limits && nh.getParam(prefix + "max_acceleration", max_acc)) {
-                ROS_INFO_NAMED("ikfast", "Setting max acceleration to %f", max_acc);
+                ROS_DEBUG_NAMED("ikfast", "Setting max acceleration to %f", max_acc);
                 jointMaxAccelerations.push_back(max_acc);
             } else {
-                ROS_INFO_NAMED("ikfast", "Setting max acceleration to default");
+                ROS_DEBUG_NAMED("ikfast", "Setting max acceleration to default");
                 jointMaxAccelerations.push_back(100); /** TODO: use constant **/
             }
         }
@@ -205,9 +205,6 @@ public:
         geometry_msgs::PoseStamped resultInSearchFrame;
         tf.transformPose(searchFrame, resultInBaseFrameStamped, resultInSearchFrame);
 
-        // TODO: Remove
-        publishSearchLocation(searchFrame, resultInSearchFrame.pose.position);
-
         // Calculate the distance from the zero point.
         return sqrt(pow(resultInSearchFrame.pose.position.x, 2) +
                     pow(resultInSearchFrame.pose.position.y, 2) +
@@ -241,9 +238,9 @@ public:
         vector<double> initialPositions(jointModelGroup->getActiveJointModels().size());
 
         for (double x = maxDistance; x >= -maxDistance; x -= resolution) {
-            ROS_INFO("Incrementing the x search paramter. Current X value is %f. Maximum value is: %f. Current found solutions is %u", x, maxDistance, numLoaded);
+            ROS_INFO("Decrementing the x search parameter. Current X value is %f. Maximum value is: %f. Current found solutions is %u", x, maxDistance, numLoaded);
             for (double y = maxDistance; y >= -maxDistance; y -= resolution) {
-                ROS_INFO("Incrementing the y search paramter. Current Y value is %f. Maximum value is: %f. Current found solutions is %u", y, maxDistance, numLoaded);
+                ROS_INFO("Decrementing the y search parameter. Current Y value is %f. Maximum value is: %f. Current found solutions is %u", y, maxDistance, numLoaded);
                 for (double z = maxDistance; z >= -maxDistance; z -= resolution) {
                     if (!ros::ok()) {
                         ROS_WARN("Interrupt requested");
@@ -298,9 +295,6 @@ public:
                     msg.pose = targetStamped;
                     msg.execution_time = calcExecutionTime(solution);
                     mdb.insert(msg);
-
-                    // TODO: Store motion plan?
-                    // TODO: Store duration?
                 }
             }
         }
