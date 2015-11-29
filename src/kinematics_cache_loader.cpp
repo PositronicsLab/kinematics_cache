@@ -19,6 +19,7 @@
 #include <tf/transform_listener.h>
 #include <mongodb_store/message_store.h>
 #include <kinematics_cache/IK.h>
+#include <kinematics_cache/IKQuery.h>
 
 namespace {
 using namespace std;
@@ -71,6 +72,8 @@ private:
 
     bool moveArmToBase;
 
+    //! Cached IK client.
+    ros::ServiceClient ik;
 public:
 	KinematicsCacheLoader() :
 		pnh("~") {
@@ -81,6 +84,9 @@ public:
         pnh.param<string>("base_frame", baseFrame, "torso_lift_link");
         pnh.param<string>("tip_link", tipLink, "r_wrist_roll_link");
         pnh.param<bool>("move_arm_to_base", moveArmToBase, false);
+
+        ros::service::waitForService("/kinematics_cache/ik");
+        ik = nh.serviceClient<kinematics_cache::IKQuery>("/kinematics_cache/ik", true /* persistent */);
 
         searchPub = nh.advertise<visualization_msgs::Marker>("search_position", 10);
         kinematicsLoader.reset(new pluginlib::ClassLoader<kinematics::KinematicsBase>("moveit_core", "kinematics::KinematicsBase"));
@@ -210,6 +216,7 @@ public:
                     pow(resultInSearchFrame.pose.position.y, 2) +
                     pow(resultInSearchFrame.pose.position.z, 2));
     }
+
     void load() {
         ROS_INFO("Loading kinematics cache");
         MessageStoreProxy mdb(nh);
@@ -262,6 +269,15 @@ public:
                     target.orientation.w = 1.0;
 
                     publishSearchLocation(searchFrame, target.position);
+
+                    kinematics_cache::IKQuery ikQuery;
+                    ikQuery.request.group = groupName;
+                    ikQuery.request.pose.header.frame_id = baseFrame;
+                    ikQuery.request.pose.pose = target;
+                    if (ik.call(ikQuery)) {
+                        ROS_INFO("Skipping already computed pose");
+                        continue;
+                    }
 
                     ros::Time now = ros::Time::now();
                     tf.waitForTransform(searchFrame, baseFrame,

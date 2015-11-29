@@ -169,7 +169,7 @@ private:
             mongo::BSONObj query = b.obj();
             mongo::BSONObj metaDataQuery;
 
-            ROS_INFO_STREAM("Executing query: " << query);
+            ROS_DEBUG_STREAM("Executing query: " << query);
             if (mdb.query<kinematics_cache::IK>(results, query, metaDataQuery, false)) {
                 ROS_INFO("Query for all entries succeeded");
             } else {
