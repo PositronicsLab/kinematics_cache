@@ -1,5 +1,5 @@
 <launch>
-    <node pkg="kinematics_cache" type="kinematics_cache_loader" name="kinematics_cache_loader_right">
+    <node pkg="kinematics_cache" type="kinematics_cache_loader" name="kinematics_cache_loader_right" output="screen">
       <param name="resolution" value="0.01"/>
       <param name="ik_search_resolution" value="0.01"/>
       <param name="kinematics_solver_name" value="pr2_right_arm_kinematics/IKFastDistanceKinematicsPlugin"/>
@@ -8,7 +8,7 @@
       <param name="tip_link" value="r_wrist_roll_link" />
       <param name="move_arm_to_base" value="false" />
   </node>
-  <node pkg="kinematics_cache" type="kinematics_cache_loader" name="kinematics_cache_loader_left">
+  <node pkg="kinematics_cache" type="kinematics_cache_loader" name="kinematics_cache_loader_left" output="screen">
       <param name="resolution" value="0.01"/>
       <param name="ik_search_resolution" value="0.01"/>
       <param name="kinematics_solver_name" value="pr2_left_arm_kinematics/IKFastDistanceKinematicsPlugin"/>
