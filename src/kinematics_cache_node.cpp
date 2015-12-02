@@ -37,14 +37,14 @@ static const double RESOLUTION_DEFAULT = 0.01;
 
 class KinematicsCacheNode {
 private:
-	//! Publisher for the dog position visualization.
-	ros::Publisher allIkPub;
+   //! Publisher for the dog position visualization.
+   ros::Publisher allIkPub;
 
-	//! Node handle
-	ros::NodeHandle nh;
+   //! Node handle
+   ros::NodeHandle nh;
 
-	//! Private nh
-	ros::NodeHandle pnh;
+   //! Private nh
+   ros::NodeHandle pnh;
 
     //! Database
     MessageStoreProxy mdb;
@@ -62,10 +62,10 @@ public:
 	KinematicsCacheNode() :
 		pnh("~"), mdb(nh) {
          pnh.param("resolution", resolution, RESOLUTION_DEFAULT);
-         pnh.param<string>("base_frame", baseFrame, "torso_lift_link");
+         pnh.param<string>("base_frame", baseFrame, "/torso_lift_link");
 
          allIkPub = nh.advertise<visualization_msgs::Marker>(
-				"/kinematics_cache/known_ik_positions_perm", 1);
+			"/kinematics_cache/known_ik_positions_perm", 1);
 
         // Detetermine if we should clean on startup
         bool shouldClean;
@@ -209,7 +209,7 @@ private:
         const geometry_msgs::PoseStamped pose) {
         // Do not perform transform, as it is a footgun for performance
         if (pose.header.frame_id != baseFrame) {
-            ROS_ERROR("Queries must be specified in the base frame");
+            ROS_ERROR("Queries must be specified in %s not %s", baseFrame.c_str(), pose.header.frame_id.c_str());
             return boost::shared_ptr<kinematics_cache::IK>();
         }
 
