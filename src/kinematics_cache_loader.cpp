@@ -81,7 +81,7 @@ public:
         pnh.param("ik_search_resolution", ikSearchResolution, IK_SEARCH_RESOLUTION_DEFAULT);
         pnh.param<string>("kinematics_solver_name", kinematicsSolverName, "pr2_right_arm_kinematics/IKFastDistanceKinematicsPlugin");
         pnh.param<string>("group_name", groupName, "right_arm");
-        pnh.param<string>("base_frame", baseFrame, "torso_lift_link");
+        pnh.param<string>("base_frame", baseFrame, "/torso_lift_link");
         pnh.param<string>("tip_link", tipLink, "r_wrist_roll_link");
         pnh.param<bool>("move_arm_to_base", moveArmToBase, false);
 

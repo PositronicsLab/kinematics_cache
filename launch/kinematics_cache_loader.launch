@@ -1,10 +1,14 @@
 <launch>
+  <include file="$(find pr2_machine)/$(env ROBOT).machine" />
+
+  <include file="$(find pr2_moveit_config)/launch/move_group.launch" />
+  <include file="$(find kinematics_cache)/launch/kinematics_cache.launch" />
     <node pkg="kinematics_cache" type="kinematics_cache_loader" name="kinematics_cache_loader_right" output="screen">
       <param name="resolution" value="0.02"/>
       <param name="ik_search_resolution" value="0.01"/>
       <param name="kinematics_solver_name" value="pr2_right_arm_kinematics/IKFastDistanceKinematicsPlugin"/>
       <param name="group_name" value="right_arm" />
-      <param name="base_frame" value="torso_lift_link" />
+      <param name="base_frame" value="/torso_lift_link" />
       <param name="tip_link" value="r_wrist_roll_link" />
       <param name="move_arm_to_base" value="false" />
   </node>
@@ -13,7 +17,7 @@
       <param name="ik_search_resolution" value="0.01"/>
       <param name="kinematics_solver_name" value="pr2_left_arm_kinematics/IKFastDistanceKinematicsPlugin"/>
       <param name="group_name" value="left_arm" />
-      <param name="base_frame" value="torso_lift_link" />
+      <param name="base_frame" value="/torso_lift_link" />
       <param name="tip_link" value="l_wrist_roll_link" />
       <param name="move_arm_to_base" value="false" />
   </node>

@@ -231,7 +231,6 @@ private:
         b << "pose.pose.orientation.w" << GT << (pose.pose.orientation.w - halfResolution) << LT << (pose.pose.orientation.w + halfResolution);
 
         mongo::BSONObj query = b.obj();
-        cout << query << endl;
         mongo::BSONObj metaDataQuery;
 
         ROS_DEBUG_STREAM("Executing query: " << query);
