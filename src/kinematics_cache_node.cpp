@@ -64,8 +64,13 @@ public:
          pnh.param("resolution", resolution, RESOLUTION_DEFAULT);
          pnh.param<string>("base_frame", baseFrame, "/torso_lift_link");
 
+        // Publish the object location
+        ros::SubscriberStatusCallback connectCB = boost::bind(&KinematicsCacheNode::startListening, this);
+        ros::SubscriberStatusCallback disconnectCB = boost::bind(&KinematicsCacheNode::stopListening, this);
+
+
          allIkPub = nh.advertise<visualization_msgs::Marker>(
-			"/kinematics_cache/known_ik_positions_perm", 1);
+			"/kinematics_cache/known_ik_positions_perm", 1, connectCB, disconnectCB);
 
         // Detetermine if we should clean on startup
         bool shouldClean;
@@ -80,14 +85,26 @@ public:
 	}
 
 private:
+    void startListening(){
+        ROS_INFO("Receiving a registration request for visualization");
+        // Broadcast to the new listener
+        visualize("left_arm", 0);
+        visualize("right_arm", 0);
+    }
+
+    void stopListening(){
+        ROS_INFO("Receiving a registration stop request for visualization");
+    }
+
     void visualize(const string group, const double maxTime = 60.0) {
+        ROS_INFO("Querying for all results");
         vector<boost::shared_ptr<kinematics_cache::IK> > ikPositions = queryAll(group, maxTime);
-        ROS_DEBUG("Found %lu results", ikPositions.size());
+        ROS_INFO("Found %lu results", ikPositions.size());
 
         visualization_msgs::Marker points;
         points.header.frame_id = baseFrame;
         points.header.stamp = ros::Time::now();
-        points.ns = "ik_positions";
+        points.ns = "ik_positions_" + group;
         points.id = 0;
         points.type = visualization_msgs::Marker::POINTS;
         points.pose.orientation.w = 1.0;
@@ -110,8 +127,11 @@ private:
         vector< boost::shared_ptr<kinematics_cache::IK> > results;
         BSONObjBuilder b;
         b.append("group", group);
-        // TODO: This must use nsecs too
-        b << "execution_time.secs" << LT << maxTime << GT << 0.0;
+
+        if (maxTime > 0) {
+            // TODO: This must use nsecs too
+            b << "execution_time.secs" << LT << maxTime << GT << 0.0;
+        }
 
         mongo::BSONObj query = b.obj();
         mongo::BSONObj metaDataQuery;
@@ -225,10 +245,11 @@ private:
         b << "pose.pose.position.z" << GT << (pose.pose.position.z - halfResolution) << LT << (pose.pose.position.z + halfResolution);
 
         // Orientation
-        b << "pose.pose.orientation.x" << GT << (pose.pose.orientation.x - halfResolution) << LT << (pose.pose.orientation.x + halfResolution);
-        b << "pose.pose.orientation.y" << GT << (pose.pose.orientation.y - halfResolution) << LT << (pose.pose.orientation.y + halfResolution);
-        b << "pose.pose.orientation.z" << GT << (pose.pose.orientation.z - halfResolution) << LT << (pose.pose.orientation.z + halfResolution);
-        b << "pose.pose.orientation.w" << GT << (pose.pose.orientation.w - halfResolution) << LT << (pose.pose.orientation.w + halfResolution);
+        // TODO: Enable orientation
+        // b << "pose.pose.orientation.x" << GT << (pose.pose.orientation.x - halfResolution) << LT << (pose.pose.orientation.x + halfResolution);
+        // b << "pose.pose.orientation.y" << GT << (pose.pose.orientation.y - halfResolution) << LT << (pose.pose.orientation.y + halfResolution);
+        // b << "pose.pose.orientation.z" << GT << (pose.pose.orientation.z - halfResolution) << LT << (pose.pose.orientation.z + halfResolution);
+        // b << "pose.pose.orientation.w" << GT << (pose.pose.orientation.w - halfResolution) << LT << (pose.pose.orientation.w + halfResolution);
 
         mongo::BSONObj query = b.obj();
         mongo::BSONObj metaDataQuery;

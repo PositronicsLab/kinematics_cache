@@ -32,7 +32,14 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
-		<Unit filename="main.cpp" />
+		<Unit filename="CMakeLists.txt" />
+		<Unit filename="launch/kinematics_cache.launch" />
+		<Unit filename="launch/kinematics_cache_loader.launch" />
+		<Unit filename="msg/IK.msg" />
+		<Unit filename="package.xml" />
+		<Unit filename="src/kinematics_cache_loader.cpp" />
+		<Unit filename="src/kinematics_cache_node.cpp" />
+		<Unit filename="srv/IKQuery.srv" />
 		<Extensions>
 			<code_completion />
 			<debugger />
