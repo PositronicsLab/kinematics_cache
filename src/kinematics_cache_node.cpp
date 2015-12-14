@@ -218,7 +218,7 @@ private:
             // Remove poses with invalid frame
             for (IKResultsList::iterator iter = results.begin(); iter != results.end(); ++iter) {
                 if (iter->first->pose.header.frame_id != baseFrame) {
-                    ROS_INFO("Found pose with invalid frame: %s. Converting.", iter->first->pose.header.frame_id.c_str());
+                    ROS_DEBUG("Found pose with invalid frame: %s. Converting.", iter->first->pose.header.frame_id.c_str());
 
                     // Transform the frame
                     geometry_msgs::PoseStamped targetInBaseFrame;
