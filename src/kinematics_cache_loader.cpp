@@ -221,6 +221,7 @@ public:
         ROS_INFO("Loading kinematics cache");
         MessageStoreProxy mdb(nh);
         const string& searchFrame = jointModelGroup->getLinkModelNames()[0];
+        ROS_INFO("Search frame for loading is %s", searchFrame.c_str());
 
         // Move to outstretched positions for easier visualization
         if (moveArmToBase) {
@@ -230,6 +231,7 @@ public:
           group.move();
         }
 
+        // The search frame is not perfect because it is not exactly the intersection at the top of the joint.
         double maxDistance = calculateMaxDistance(searchFrame);
 
         ROS_INFO("Maximum distance is %f", maxDistance);
@@ -240,9 +242,12 @@ public:
         kinematics::KinematicsQueryOptions opts;
         double timeout = 180;
 
-        // TODO: Not exactly the right source frame
         unsigned int numLoaded = 0;
         vector<double> initialPositions(jointModelGroup->getActiveJointModels().size());
+
+        // Frames never move so we can use a constant transform
+        ros::Time now = ros::Time::now();
+        tf.waitForTransform(searchFrame, baseFrame, now, ros::Duration(10.0));
 
         for (double x = maxDistance; x >= -maxDistance; x -= resolution) {
             ROS_INFO("Decrementing the x search parameter. Current X value is %f. Maximum value is: %f. Current found solutions is %u", x, maxDistance, numLoaded);
@@ -258,6 +263,7 @@ public:
                         ROS_DEBUG("Skipping point exceeding max distance");
                         continue;
                     }
+
                     ROS_DEBUG("Attempting to create IK solution at %f, %f, %f", x, y, z);
                     geometry_msgs::Pose target;
                     target.position.x = x;
@@ -270,20 +276,7 @@ public:
 
                     publishSearchLocation(searchFrame, target.position);
 
-                    kinematics_cache::IKQuery ikQuery;
-                    ikQuery.request.group = groupName;
-                    ikQuery.request.pose.header.frame_id = baseFrame;
-                    ikQuery.request.pose.pose = target;
-                    if (ik.call(ikQuery)) {
-                        ROS_INFO("Skipping already computed pose");
-                        continue;
-                    }
-
-                    ros::Time now = ros::Time::now();
-                    tf.waitForTransform(searchFrame, baseFrame,
-                              now, ros::Duration(10.0));
-
-                    // Transform
+                    // Transform to the base frame of the robot where all IK occurs
                     geometry_msgs::PoseStamped targetInBaseFrame;
                     geometry_msgs::PoseStamped targetStamped;
                     targetStamped.pose = target;
@@ -291,6 +284,21 @@ public:
                     targetStamped.header.frame_id = searchFrame;
 
                     tf.transformPose(baseFrame, targetStamped, targetInBaseFrame);
+
+                    // Reset the pose to be vertical in the robot base frame.
+                    targetInBaseFrame.pose.orientation.x = 0.0;
+                    targetInBaseFrame.pose.orientation.y = 0.0;
+                    targetInBaseFrame.pose.orientation.z = 0.0;
+                    targetInBaseFrame.pose.orientation.w = 1.0;
+
+                    // Check if the pose is in the cache.
+                    kinematics_cache::IKQuery ikQuery;
+                    ikQuery.request.group = groupName;
+                    ikQuery.request.pose = targetInBaseFrame;
+                    if (ik.call(ikQuery)) {
+                        ROS_INFO("Skipping already computed pose");
+                        continue;
+                    }
 
                     vector<double> solution(jointModelGroup->getActiveJointModels().size());
                     moveit_msgs::MoveItErrorCodes error;
@@ -304,11 +312,10 @@ public:
 
                     numLoaded++;
 
-
                     kinematics_cache::IK msg;
                     msg.positions = solution;
                     msg.group = groupName;
-                    msg.pose = targetStamped;
+                    msg.pose = targetInBaseFrame;
                     msg.execution_time = calcExecutionTime(solution);
                     mdb.insert(msg);
                 }

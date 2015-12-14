@@ -3,3 +3,4 @@ geometry_msgs/PoseStamped pose
 ---
 float64[] positions
 duration execution_time
+geometry_msgs/PoseStamped pose

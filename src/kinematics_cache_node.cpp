@@ -3,6 +3,7 @@
 #include <kinematics_cache/IKQuery.h>
 #include <mongodb_store/message_store.h>
 #include <visualization_msgs/Marker.h>
+#include <tf/transform_listener.h>
 
 namespace {
 struct PoseCompare {
@@ -35,6 +36,9 @@ using namespace mongo;
 
 static const double RESOLUTION_DEFAULT = 0.01;
 
+typedef vector<boost::shared_ptr<kinematics_cache::IK> > IKList;
+typedef vector< std::pair<boost::shared_ptr<kinematics_cache::IK>, mongo::BSONObj> > IKResultsList;
+
 class KinematicsCacheNode {
 private:
    //! Publisher for the dog position visualization.
@@ -58,6 +62,8 @@ private:
     //! IK Service
     ros::ServiceServer ikService;
 
+    //! TF
+    tf::TransformListener tf;
 public:
 	KinematicsCacheNode() :
 		pnh("~"), mdb(nh) {
@@ -98,7 +104,7 @@ private:
 
     void visualize(const string group, const double maxTime = 60.0) {
         ROS_INFO("Querying for all results");
-        vector<boost::shared_ptr<kinematics_cache::IK> > ikPositions = queryAll(group, maxTime);
+        IKList ikPositions = queryAll(group, maxTime);
         ROS_INFO("Found %lu results", ikPositions.size());
 
         visualization_msgs::Marker points;
@@ -122,9 +128,9 @@ private:
         allIkPub.publish(points);
     }
 
-    vector<boost::shared_ptr<kinematics_cache::IK> > queryAll(const string group, const double maxTime = 60.0) {
+    IKList queryAll(const string group, const double maxTime = 60.0) {
 
-        vector< boost::shared_ptr<kinematics_cache::IK> > results;
+        IKList results;
         BSONObjBuilder b;
         b.append("group", group);
 
@@ -142,7 +148,7 @@ private:
             return results;
         }
         ROS_WARN("Query failed. Returned empty result");
-        return vector<boost::shared_ptr<kinematics_cache::IK> >();
+        return IKList();
     }
 
     bool query(kinematics_cache::IKQuery::Request& req,
@@ -154,6 +160,7 @@ private:
         }
         res.positions = result->positions;
         res.execution_time = result->execution_time;
+        res.pose = result->pose;
         return true;
     }
 
@@ -181,7 +188,7 @@ private:
         for (unsigned int i = 0; i < boost::size(groups); ++i) {
             ROS_INFO("Cleaning group %s", groups[i].c_str());
             multimap<geometry_msgs::Pose, string, PoseCompare> poses;
-            vector< std::pair<boost::shared_ptr<kinematics_cache::IK>, mongo::BSONObj> > results;
+            IKResultsList results;
 
             BSONObjBuilder b;
             b.append("group", groups[i]);
@@ -197,6 +204,39 @@ private:
                 return;
             }
 
+            vector<string> idsToDelete;
+
+            // Remove all poses that have a zero execution time.
+            for (IKResultsList::iterator iter = results.begin(); iter != results.end(); ++iter) {
+                if (iter->first->execution_time.toSec() <= 0.0) {
+                    ROS_INFO("Found pose with zero execution time: %f. Removing.", iter->first->execution_time.toSec());
+                    idsToDelete.push_back(iter->second["_id"].OID().toString());
+                    results.erase(iter);
+                }
+            }
+
+            // Remove poses with invalid frame
+            for (IKResultsList::iterator iter = results.begin(); iter != results.end(); ++iter) {
+                if (iter->first->pose.header.frame_id != baseFrame) {
+                    ROS_INFO("Found pose with invalid frame: %s. Converting.", iter->first->pose.header.frame_id.c_str());
+
+                    // Transform the frame
+                    geometry_msgs::PoseStamped targetInBaseFrame;
+
+                    // Assume that the pose was created in the base configuration of the robot, which is the same
+                    // as the current configuration
+                    ros::Time now = ros::Time::now();
+                    iter->first->pose.header.stamp = now;
+                    tf.waitForTransform(iter->first->pose.header.frame_id, baseFrame, now, ros::Duration(10.0));
+                    tf.transformPose(baseFrame, iter->first->pose, targetInBaseFrame);
+
+                    // Now update the database
+                    boost::shared_ptr<kinematics_cache::IK> msg = iter->first;
+                    msg->pose = targetInBaseFrame;
+                    mdb.updateID(iter->second["_id"].OID().toString(), *msg);
+                }
+            }
+
             // Create a map from pose to id
             ROS_INFO("Loading the multimap with %lu results", results.size());
             for (unsigned int j = 0; j < results.size(); ++j) {
@@ -207,7 +247,6 @@ private:
             ROS_INFO("Multimap loaded successfully");
 
             geometry_msgs::Pose lastPose;
-            vector<string> idsToDelete;
             ROS_INFO("Searching for duplicates");
             for (multimap<geometry_msgs::Pose, string>::iterator iter = poses.begin(); iter != poses.end(); ++iter) {
                 if (posesEqual(lastPose, iter->first)) {
