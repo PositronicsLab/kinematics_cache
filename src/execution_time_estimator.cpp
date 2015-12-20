@@ -106,7 +106,10 @@ private:
                     human_catching::MoveArmFastGoal goal;
                     goal.joint_positions = randomJointAngles;
                     ros::Time begin = ros::Time::now();
-                    arm.sendGoal(goal);
+                    if (!arm.sendGoal(goal)) {
+                        ROS_WARN("Failed to reach goal");
+                        // TODO: Error handling
+                    }
                     ros::Time end = ros::Time::now();
                     ROS_INFO("Arm movement completed");
 
