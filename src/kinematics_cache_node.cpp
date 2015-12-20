@@ -1,4 +1,9 @@
 #include <ros/ros.h>
+
+// Ensure this is defined before boost since mongodb uses version
+// 2 and both cannot be simulataneously defined.
+#define BOOST_FILESYSTEM_VERSION 2
+
 #include <kinematics_cache/IK.h>
 #include <kinematics_cache/IKQuery.h>
 #include <mongodb_store/message_store.h>

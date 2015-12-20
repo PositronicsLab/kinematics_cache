@@ -132,6 +132,7 @@ add_definitions(${EIGEN_DEFINITIONS})
 ## Declare a C++ executable
 add_executable(kinematics_cache_node src/kinematics_cache_node.cpp)
 add_executable(kinematics_cache_loader src/kinematics_cache_loader.cpp)
+add_executable(execution_time_estimator src/execution_time_estimator.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -144,6 +145,10 @@ target_link_libraries(kinematics_cache_node
 target_link_libraries(kinematics_cache_loader
    ${catkin_LIBRARIES}
 )
+target_link_libraries(execution_time_estimator
+   ${catkin_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############
