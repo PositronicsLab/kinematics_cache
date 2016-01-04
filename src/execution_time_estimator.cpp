@@ -3,7 +3,6 @@
 #include <kinematics_cache/IKQuery.h>
 #include <mongodb_store/message_store.h>
 #include <tf/transform_listener.h>
-#include <moveit/move_group_interface/move_group.h>
 #include <actionlib/client/simple_action_client.h>
 #include <human_catching/MoveArmFastAction.h>
 
@@ -65,13 +64,12 @@ private:
         else {
             ROS_INFO("Action did not finish before the time out.");
         }
+        return client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED;
     }
 
     public:
         void update() {
         ROS_INFO("Updating the execution times");
-
-        moveit::planning_interface::MoveGroup group(armName);
 
         ArmClient arm(armName + "_move_arm_fast_action_server", true);
         ROS_INFO("Waiting for %s", (armName + "_move_arm_fast_action_server").c_str());
@@ -105,9 +103,15 @@ private:
         for (unsigned int i = 0; i < trials; ++i) {
             ROS_INFO("Beginning trial %u", i);
 
-            // Initialize to random pose
-            // TODO: Use a resolution complete method
-            vector<double> randomJointAngles = group.getRandomJointValues();
+            // Select the worst distance
+            vector<double>* jointAnglesToTest;
+            double maxDistance = 0;
+            for (IKResultsList::iterator iter = results.begin(); iter != results.end(); ++iter) {
+                if (iter->first->minimum_distance > maxDistance) {
+                    maxDistance = iter->first->minimum_distance;
+                    jointAnglesToTest = &(iter->first->positions);
+                }
+            }
 
             // Simulate the movement and average the time
             ros::Duration totalTime(0);
@@ -117,7 +121,7 @@ private:
                 // Move the arm
                 ROS_INFO("Moving arm to random position.");
                 human_catching::MoveArmFastGoal goal;
-                goal.joint_positions = randomJointAngles;
+                goal.joint_positions = *jointAnglesToTest;
                 ros::Time begin = ros::Time::now();
                 if (!moveArm(arm, goal)){
                     continue;
@@ -147,7 +151,7 @@ private:
 
             // Update any configurations where the total joint distance is less than for the current estimate
             for (IKResultsList::iterator iter = results.begin(); iter != results.end(); ++iter) {
-                double currDistance = distance(iter->first->positions, randomJointAngles);
+                double currDistance = distance(iter->first->positions, *jointAnglesToTest);
                 ROS_DEBUG("Distance to current configuration is %f", currDistance);
                 if (currDistance < iter->first->minimum_distance) {
                     ROS_DEBUG("Updating due to %f lower than %f. Calculated estimate was %f.", currDistance,

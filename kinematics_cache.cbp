@@ -33,10 +33,13 @@
 			<Add option="-fexceptions" />
 		</Compiler>
 		<Unit filename="CMakeLists.txt" />
+		<Unit filename="launch/execution_time_updater.launch" />
 		<Unit filename="launch/kinematics_cache.launch" />
+		<Unit filename="launch/kinematics_cache_cleaner.launch" />
 		<Unit filename="launch/kinematics_cache_loader.launch" />
 		<Unit filename="msg/IK.msg" />
 		<Unit filename="package.xml" />
+		<Unit filename="src/execution_time_estimator.cpp" />
 		<Unit filename="src/kinematics_cache_loader.cpp" />
 		<Unit filename="src/kinematics_cache_node.cpp" />
 		<Unit filename="srv/IKQuery.srv" />

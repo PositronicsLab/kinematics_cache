@@ -133,15 +133,14 @@ private:
         allIkPub.publish(points);
     }
 
-    IKList queryAll(const string group, const double maxTime = 60.0) {
+    IKList queryAll(const string group, const int maxTime = 60) {
 
         IKList results;
         BSONObjBuilder b;
         b.append("group", group);
 
         if (maxTime > 0) {
-            // TODO: This must use nsecs too
-            b << "execution_time.secs" << LT << maxTime << GT << 0.0;
+            b << "execution_time.secs" << LT << floor(maxTime);
         }
 
         mongo::BSONObj query = b.obj();

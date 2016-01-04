@@ -27,6 +27,8 @@ using namespace mongodb_store;
 
 static const double RESOLUTION_DEFAULT = 0.01;
 static const double IK_SEARCH_RESOLUTION_DEFAULT = 0.01;
+static const double MAX_VELOCITY = 100;
+static const double MAX_ACCELERATION = 100;
 
 class KinematicsCacheLoader {
 
@@ -127,7 +129,7 @@ public:
                 jointMaxVelocities.push_back(max_velocity);
             } else {
                 ROS_DEBUG_NAMED("kinematics_cache_loader", "Setting max velocity to default");
-                jointMaxVelocities.push_back(100); /** TODO: use constant */
+                jointMaxVelocities.push_back(MAX_VELOCITY);
             }
 
             bool has_acc_limits;
@@ -137,7 +139,7 @@ public:
                 jointMaxAccelerations.push_back(max_acc);
             } else {
                 ROS_DEBUG_NAMED("ikfast", "Setting max acceleration to default");
-                jointMaxAccelerations.push_back(100); /** TODO: use constant **/
+                jointMaxAccelerations.push_back(MAX_ACCELERATION);
             }
         }
 	}
