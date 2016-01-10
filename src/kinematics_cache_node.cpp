@@ -164,6 +164,7 @@ private:
         }
         res.positions = result->positions;
         res.execution_time = result->execution_time;
+        res.simulated_execution_time = result->simulated_execution_time;
         res.pose = result->pose;
         return true;
     }

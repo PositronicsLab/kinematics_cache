@@ -20,6 +20,7 @@
 #include <mongodb_store/message_store.h>
 #include <kinematics_cache/IK.h>
 #include <kinematics_cache/IKQuery.h>
+#include <boost/math/constants/constants.hpp>
 
 namespace {
 using namespace std;
@@ -29,6 +30,8 @@ static const double RESOLUTION_DEFAULT = 0.01;
 static const double IK_SEARCH_RESOLUTION_DEFAULT = 0.01;
 static const double MAX_VELOCITY = 100;
 static const double MAX_ACCELERATION = 100;
+
+static const double pi = boost::math::constants::pi<double>();
 
 class KinematicsCacheLoader {
 
@@ -271,10 +274,12 @@ public:
                     target.position.x = x;
                     target.position.y = y;
                     target.position.z = z;
-                    target.orientation.x = 0.0;
-                    target.orientation.y = 0.0;
-                    target.orientation.z = 0.0;
-                    target.orientation.w = 1.0;
+
+                    if (groupName == "left_arm") {
+                        target.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, 0, pi / 2.0);
+                    } else if (groupName == "right_arm") {
+                        target.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, 0, -pi / 2.0);
+                    }
 
                     publishSearchLocation(searchFrame, target.position);
 
@@ -286,12 +291,6 @@ public:
                     targetStamped.header.frame_id = searchFrame;
 
                     tf.transformPose(baseFrame, targetStamped, targetInBaseFrame);
-
-                    // Reset the pose to be vertical in the robot base frame.
-                    targetInBaseFrame.pose.orientation.x = 0.0;
-                    targetInBaseFrame.pose.orientation.y = 0.0;
-                    targetInBaseFrame.pose.orientation.z = 0.0;
-                    targetInBaseFrame.pose.orientation.w = 1.0;
 
                     // Check if the pose is in the cache.
                     kinematics_cache::IKQuery ikQuery;

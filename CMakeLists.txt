@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_planning_interface
   mongodb_store
   tf
+  tf_conversions
 )
 
 ## System dependencies are found with CMake's conventions
@@ -133,6 +134,7 @@ add_definitions(${EIGEN_DEFINITIONS})
 add_executable(kinematics_cache_node src/kinematics_cache_node.cpp)
 add_executable(kinematics_cache_loader src/kinematics_cache_loader.cpp)
 add_executable(execution_time_estimator src/execution_time_estimator.cpp)
+add_executable(orientation_updater src/orientation_updater.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -148,7 +150,9 @@ target_link_libraries(kinematics_cache_loader
 target_link_libraries(execution_time_estimator
    ${catkin_LIBRARIES}
 )
-
+target_link_libraries(orientation_updater
+   ${catkin_LIBRARIES}
+)
 #############
 ## Install ##
 #############
