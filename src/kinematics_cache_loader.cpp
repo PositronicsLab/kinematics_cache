@@ -30,6 +30,7 @@ static const double RESOLUTION_DEFAULT = 0.01;
 static const double IK_SEARCH_RESOLUTION_DEFAULT = 0.01;
 static const double MAX_VELOCITY = 100;
 static const double MAX_ACCELERATION = 100;
+static const double MAX_EXEC_TIME = 60 * 60;
 
 static const double pi = boost::math::constants::pi<double>();
 
@@ -318,6 +319,7 @@ public:
                     msg.group = groupName;
                     msg.pose = targetInBaseFrame;
                     msg.execution_time = calcExecutionTime(solution);
+                    msg.simulated_execution_time = ros::Duration(MAX_EXEC_TIME);
                     mdb.insert(msg);
                 }
             }
