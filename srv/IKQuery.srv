@@ -1,7 +1,4 @@
 string group
 geometry_msgs/PoseStamped pose
 ---
-float64[] positions
-duration execution_time
-duration simulated_execution_time
-geometry_msgs/PoseStamped pose
+kinematics_cache/IK[] results

@@ -157,15 +157,20 @@ private:
 
     bool query(kinematics_cache::IKQuery::Request& req,
                kinematics_cache::IKQuery::Response& res) {
-        boost::shared_ptr<kinematics_cache::IK> result = query(req.group, req.pose);
-        if (result.get() == NULL) {
+
+        IKList results = query(req.group, req.pose);
+        if (results.empty()) {
             ROS_INFO("Failed to find IK result for service call");
             return false;
         }
-        res.positions = result->positions;
-        res.execution_time = result->execution_time;
-        res.simulated_execution_time = result->simulated_execution_time;
-        res.pose = result->pose;
+
+        for (IKList::iterator i = results.begin(); i != results.end(); ++i) {
+            if ((*i)->positions.size() == 0) {
+                ROS_WARN("IK result was invalid");
+                continue;
+            }
+            res.results.push_back(**i);
+        }
         return true;
     }
 
@@ -269,19 +274,26 @@ private:
         }
     }
 
-    boost::shared_ptr<kinematics_cache::IK> query(const std::string group,
+    IKList query(const std::string group,
         const geometry_msgs::PoseStamped pose) {
+
+        IKList results;
+
         // Do not perform transform, as it is a footgun for performance
         if (pose.header.frame_id != baseFrame) {
             ROS_ERROR("Queries must be specified in %s not %s", baseFrame.c_str(), pose.header.frame_id.c_str());
-            return boost::shared_ptr<kinematics_cache::IK>();
+            return results;
         }
 
-        vector< boost::shared_ptr<kinematics_cache::IK> > results;
+
         double halfResolution = resolution / 2.0;
 
         BSONObjBuilder b;
-        b.append("group", group);
+
+        // Query any group if it is not set
+        if (!group.empty()) {
+            b.append("group", group);
+        }
 
         // Position
         b << "pose.pose.position.x" << GT << (pose.pose.position.x - halfResolution) << LT << (pose.pose.position.x + halfResolution);
@@ -300,14 +312,11 @@ private:
 
         ROS_DEBUG_STREAM("Executing query: " << query);
         if (mdb.query<kinematics_cache::IK>(results, query, metaDataQuery, true)) {
-            if (results.size() > 1) {
-                ROS_WARN("Multiple results returned for query. Prune database.");
-            }
             ROS_DEBUG("Query succeeded");
-            return results[0];
+            return results;
         }
         ROS_WARN("Query failed. Returned empty result");
-        return boost::shared_ptr<kinematics_cache::IK>();
+        return results;
     }
 };
 }
