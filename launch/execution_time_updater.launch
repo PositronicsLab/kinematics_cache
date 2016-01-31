@@ -3,10 +3,10 @@
   <include file="$(find mongodb_store)/launch/mongodb_store.launch">
     <arg name="db_path" value="/home/jlurz/mongodb"/>
   </include>
-  <node pkg="human_catching" type="move_arm_fast_action_server" name="right_arm_move_arm_fast_action_server" output="screen">
+  <node pkg="humanoid_catching" type="move_arm_fast_action_server" name="right_arm_move_arm_fast_action_server" output="screen">
     <param name="arm" value="right" />
   </node>
-  <node pkg="human_catching" type="move_arm_fast_action_server" name="left_arm_move_arm_fast_action_server" output="screen">
+  <node pkg="humanoid_catching" type="move_arm_fast_action_server" name="left_arm_move_arm_fast_action_server" output="screen">
     <param name="arm" value="left" />
   </node>
   <include file="$(find pr2_moveit_config)/launch/move_group.launch" />

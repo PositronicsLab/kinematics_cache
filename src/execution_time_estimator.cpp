@@ -4,7 +4,7 @@
 #include <mongodb_store/message_store.h>
 #include <tf/transform_listener.h>
 #include <actionlib/client/simple_action_client.h>
-#include <human_catching/MoveArmFastAction.h>
+#include <humanoid_catching/MoveArmFastAction.h>
 
 namespace {
 
@@ -14,7 +14,7 @@ using namespace mongo;
 
 typedef vector<boost::shared_ptr<kinematics_cache::IK> > IKList;
 typedef vector< std::pair<boost::shared_ptr<kinematics_cache::IK>, mongo::BSONObj> > IKResultsList;
-typedef actionlib::SimpleActionClient<human_catching::MoveArmFastAction> ArmClient;
+typedef actionlib::SimpleActionClient<humanoid_catching::MoveArmFastAction> ArmClient;
 
 class ExecutionTimeEstimator {
 private:
@@ -55,7 +55,7 @@ private:
         return d;
     }
 
-    bool moveArm(ArmClient& client, const human_catching::MoveArmFastGoal& goal) {
+    bool moveArm(ArmClient& client, const humanoid_catching::MoveArmFastGoal& goal) {
         client.sendGoal(goal);
         if (client.waitForResult(ros::Duration(60.0))) {
             actionlib::SimpleClientGoalState state = client.getState();
@@ -78,7 +78,7 @@ private:
         ROS_INFO("Updating group %s", armName.c_str());
 
         ROS_INFO("Resetting arm to zero position");
-        human_catching::MoveArmFastGoal baseGoal;
+        humanoid_catching::MoveArmFastGoal baseGoal;
         baseGoal.joint_positions = vector<double>(7);
         moveArm(arm, baseGoal);
 
@@ -120,7 +120,7 @@ private:
 
                 // Move the arm
                 ROS_INFO("Moving arm to random position.");
-                human_catching::MoveArmFastGoal goal;
+                humanoid_catching::MoveArmFastGoal goal;
                 goal.joint_positions = *jointAnglesToTest;
                 ros::Time begin = ros::Time::now();
                 if (!moveArm(arm, goal)){
