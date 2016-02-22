@@ -1,4 +1,5 @@
 string group
 geometry_msgs/PoseStamped pose
+float64 error
 ---
 kinematics_cache/IK[] results

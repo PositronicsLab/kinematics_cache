@@ -158,7 +158,7 @@ private:
     bool query(kinematics_cache::IKQuery::Request& req,
                kinematics_cache::IKQuery::Response& res) {
 
-        IKList results = query(req.group, req.pose);
+        IKList results = query(req.group, req.error, req.pose);
         if (results.empty()) {
             ROS_INFO("Failed to find IK result for service call");
             return false;
@@ -171,6 +171,7 @@ private:
             }
             res.results.push_back(**i);
         }
+
         return true;
     }
 
@@ -275,8 +276,11 @@ private:
     }
 
     IKList query(const std::string group,
+        double error,
         const geometry_msgs::PoseStamped pose) {
 
+        ROS_INFO("Querying for group %s with error %f at position %f %f %f", group.c_str(), error,
+                 pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
         IKList results;
 
         // Do not perform transform, as it is a footgun for performance
@@ -285,34 +289,37 @@ private:
             return results;
         }
 
-
-        double halfResolution = resolution / 2.0;
+        if (error == 0) {
+            ROS_INFO("Setting error to default value");
+            error = resolution / 2.0;
+        }
 
         BSONObjBuilder b;
 
         // Query any group if it is not set
         if (!group.empty()) {
+            ROS_DEBUG("Executing query for group %s", group.c_str());
             b.append("group", group);
         }
 
         // Position
-        b << "pose.pose.position.x" << GT << (pose.pose.position.x - halfResolution) << LT << (pose.pose.position.x + halfResolution);
-        b << "pose.pose.position.y" << GT << (pose.pose.position.y - halfResolution) << LT << (pose.pose.position.y + halfResolution);
-        b << "pose.pose.position.z" << GT << (pose.pose.position.z - halfResolution) << LT << (pose.pose.position.z + halfResolution);
+        b << "pose.pose.position.x" << GT << (pose.pose.position.x - error) << LT << (pose.pose.position.x + error);
+        b << "pose.pose.position.y" << GT << (pose.pose.position.y - error) << LT << (pose.pose.position.y + error);
+        b << "pose.pose.position.z" << GT << (pose.pose.position.z - error) << LT << (pose.pose.position.z + error);
 
         // Orientation
         // TODO: Enable orientation
-        // b << "pose.pose.orientation.x" << GT << (pose.pose.orientation.x - halfResolution) << LT << (pose.pose.orientation.x + halfResolution);
-        // b << "pose.pose.orientation.y" << GT << (pose.pose.orientation.y - halfResolution) << LT << (pose.pose.orientation.y + halfResolution);
-        // b << "pose.pose.orientation.z" << GT << (pose.pose.orientation.z - halfResolution) << LT << (pose.pose.orientation.z + halfResolution);
-        // b << "pose.pose.orientation.w" << GT << (pose.pose.orientation.w - halfResolution) << LT << (pose.pose.orientation.w + halfResolution);
+        // b << "pose.pose.orientation.x" << GT << (pose.pose.orientation.x - error) << LT << (pose.pose.orientation.x + error);
+        // b << "pose.pose.orientation.y" << GT << (pose.pose.orientation.y - error) << LT << (pose.pose.orientation.y + error);
+        // b << "pose.pose.orientation.z" << GT << (pose.pose.orientation.z - error) << LT << (pose.pose.orientation.z + error);
+        // b << "pose.pose.orientation.w" << GT << (pose.pose.orientation.w - error) << LT << (pose.pose.orientation.w + error);
 
         mongo::BSONObj query = b.obj();
         mongo::BSONObj metaDataQuery;
 
         ROS_DEBUG_STREAM("Executing query: " << query);
-        if (mdb.query<kinematics_cache::IK>(results, query, metaDataQuery, true)) {
-            ROS_DEBUG("Query succeeded");
+        if (mdb.query<kinematics_cache::IK>(results, query, metaDataQuery, false)) {
+            ROS_INFO("Query succeeded. Found %lu results.", results.size());
             return results;
         }
         ROS_WARN("Query failed. Returned empty result");
