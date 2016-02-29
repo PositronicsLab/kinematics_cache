@@ -5,5 +5,6 @@
     <node pkg="kinematics_cache" type="kinematics_cache_node" name="kinematics_cache_node" output="screen">
         <param name="resolution" value="0.02" />
         <param name="clean" value="false"/>
+        <param name="max_distance" value="0.821000"/>
   </node>
 </launch>

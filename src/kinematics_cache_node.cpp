@@ -61,6 +61,9 @@ private:
     //! Cache resolution
     double resolution;
 
+    //! Maximum arm distance
+    double maxDistance;
+
     //! Base frame for IK
     string baseFrame;
 
@@ -73,6 +76,7 @@ public:
 	KinematicsCacheNode() :
 		pnh("~"), mdb(nh) {
          pnh.param("resolution", resolution, RESOLUTION_DEFAULT);
+         pnh.param("max_distance", maxDistance, 1000.0 /* Large number to disable check */);
          pnh.param<string>("base_frame", baseFrame, "/torso_lift_link");
 
         // Publish the object location
@@ -158,8 +162,9 @@ private:
     bool query(kinematics_cache::IKQuery::Request& req,
                kinematics_cache::IKQuery::Response& res) {
 
-        IKList results = query(req.group, req.error, req.pose);
-        if (results.empty()) {
+        IKList results;
+        bool success = query(req.group, req.error, req.pose, results);
+        if (success) {
             ROS_INFO("Failed to find IK result for service call");
             return false;
         }
@@ -275,23 +280,34 @@ private:
         }
     }
 
-    IKList query(const std::string group,
+    static double calcDistance(const geometry_msgs::PoseStamped& pose) {
+        return sqrt(pow(pose.pose.position.x, 2) +
+                    pow(pose.pose.position.y, 2) +
+                    pow(pose.pose.position.z, 2));
+    }
+
+    bool query(const std::string group,
         double error,
-        const geometry_msgs::PoseStamped pose) {
+        const geometry_msgs::PoseStamped pose, IKList& results) {
 
         ROS_INFO("Querying for group %s with error %f at position %f %f %f", group.c_str(), error,
                  pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
-        IKList results;
 
         // Do not perform transform, as it is a footgun for performance
         if (pose.header.frame_id != baseFrame) {
             ROS_ERROR("Queries must be specified in %s not %s", baseFrame.c_str(), pose.header.frame_id.c_str());
-            return results;
+            return false;
         }
 
         if (error == 0) {
             ROS_INFO("Setting error to default value");
             error = resolution / 2.0;
+        }
+
+
+        if (calcDistance(pose) > maxDistance + error) {
+            ROS_INFO("Position beyond the maximum reach of the arm");
+            return true;
         }
 
         BSONObjBuilder b;
@@ -320,10 +336,10 @@ private:
         ROS_DEBUG_STREAM("Executing query: " << query);
         if (mdb.query<kinematics_cache::IK>(results, query, metaDataQuery, false)) {
             ROS_INFO("Query succeeded. Found %lu results.", results.size());
-            return results;
+            return true;
         }
-        ROS_WARN("Query failed. Returned empty result");
-        return results;
+        ROS_WARN("Query failed");
+        return false;
     }
 };
 }
