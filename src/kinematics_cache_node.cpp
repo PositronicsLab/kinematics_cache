@@ -163,8 +163,7 @@ private:
                kinematics_cache::IKQuery::Response& res) {
 
         IKList results;
-        bool success = query(req.group, req.error, req.pose, results);
-        if (success) {
+        if (!query(req.group, req.error, req.pose, results)) {
             ROS_INFO("Failed to find IK result for service call");
             return false;
         }
@@ -304,9 +303,9 @@ private:
             error = resolution / 2.0;
         }
 
-
         if (calcDistance(pose) > maxDistance + error) {
-            ROS_INFO("Position beyond the maximum reach of the arm");
+            ROS_INFO("Position at distance %f beyond the maximum reach of the arm %f given error %f",
+            calcDistance(pose), maxDistance, error);
             return true;
         }
 
