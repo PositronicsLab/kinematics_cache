@@ -289,7 +289,7 @@ private:
         double error,
         const geometry_msgs::PoseStamped pose, IKList& results) {
 
-        ROS_INFO("Querying for group %s with error %f at position %f %f %f", group.c_str(), error,
+        ROS_DEBUG("Querying for group %s with error %f at position %f %f %f", group.c_str(), error,
                  pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
 
         // Do not perform transform, as it is a footgun for performance
@@ -299,12 +299,12 @@ private:
         }
 
         if (error == 0) {
-            ROS_INFO("Setting error to default value");
+            ROS_DEBUG("Setting error to default value");
             error = resolution / 2.0;
         }
 
         if (calcDistance(pose) > maxDistance + error) {
-            ROS_INFO("Position at distance %f beyond the maximum reach of the arm %f given error %f",
+            ROS_DEBUG("Position at distance %f beyond the maximum reach of the arm %f given error %f",
             calcDistance(pose), maxDistance, error);
             return true;
         }
@@ -334,7 +334,7 @@ private:
 
         ROS_DEBUG_STREAM("Executing query: " << query);
         if (mdb.query<kinematics_cache::IK>(results, query, metaDataQuery, false)) {
-            ROS_INFO("Query succeeded. Found %lu results.", results.size());
+            ROS_DEBUG("Query succeeded. Found %lu results.", results.size());
             return true;
         }
         ROS_WARN("Query failed");
