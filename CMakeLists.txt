@@ -13,9 +13,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   moveit_ros_planning
   moveit_ros_planning_interface
-  mongodb_store
   tf
   tf_conversions
+  octomap_ros
 )
 
 ## System dependencies are found with CMake's conventions
@@ -54,12 +54,14 @@ find_package(Boost REQUIRED COMPONENTS system)
 ## Generate messages in the 'msg' folder
 add_message_files(   FILES
    IK.msg
+   IKv2.msg
 )
 
 ## Generate services in the 'srv' folder
 add_service_files(
    FILES
    IKQuery.srv
+   IKQueryv2.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -102,7 +104,6 @@ generate_messages(DEPENDENCIES std_msgs geometry_msgs moveit_msgs)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
    INCLUDE_DIRS include
-#  LIBRARIES kinematics_cache
    CATKIN_DEPENDS roscpp rospy std_msgs
    DEPENDS system_lib
 )
@@ -115,15 +116,11 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
+  include
   ${catkin_INCLUDE_DIRS}
   ${EIGEN_INCLUDE_DIRS}
 )
 add_definitions(${EIGEN_DEFINITIONS})
-
-## Declare a C++ library
-# add_library(kinematics_cache
-#   src/${PROJECT_NAME}/kinematics_cache.cpp
-# )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -131,10 +128,9 @@ add_definitions(${EIGEN_DEFINITIONS})
 # add_dependencies(kinematics_cache ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(kinematics_cache_node src/kinematics_cache_node.cpp)
-add_executable(kinematics_cache_loader src/kinematics_cache_loader.cpp)
-add_executable(execution_time_estimator src/execution_time_estimator.cpp)
-add_executable(orientation_updater src/orientation_updater.cpp)
+add_executable(kinematics_cache_node src/kinematics_cache_node.cpp src/OcTreeJointAngles.cpp)
+# add_executable(oc_tree_writer src/oc_tree_writer.cpp src/OcTreeJointAngles.cpp)
+# add_executable(kinematics_cache_loader src/kinematics_cache_loader.cpp src/OcTreeJointAngles.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -144,15 +140,23 @@ add_executable(orientation_updater src/orientation_updater.cpp)
 target_link_libraries(kinematics_cache_node
    ${catkin_LIBRARIES}
 )
-target_link_libraries(kinematics_cache_loader
-   ${catkin_LIBRARIES}
-)
-target_link_libraries(execution_time_estimator
-   ${catkin_LIBRARIES}
-)
-target_link_libraries(orientation_updater
-   ${catkin_LIBRARIES}
-)
+
+# target_link_libraries(kinematics_cache_loader
+#   ${catkin_LIBRARIES}
+#)
+
+# target_link_libraries(oc_tree_writer
+#   ${catkin_LIBRARIES}
+# )
+
+
+# target_link_libraries(execution_time_estimator
+#   ${catkin_LIBRARIES}
+#)
+# target_link_libraries(orientation_updater
+#   ${catkin_LIBRARIES}
+#)
+
 #############
 ## Install ##
 #############
@@ -168,18 +172,18 @@ target_link_libraries(orientation_updater
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS kinematics_cache kinematics_cache_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(TARGETS kinematics_cache_node
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/${PROJECT_NAME}/
+   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+   FILES_MATCHING PATTERN "*.h"
+   PATTERN ".svn" EXCLUDE
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES

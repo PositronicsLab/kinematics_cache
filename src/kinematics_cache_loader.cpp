@@ -1,10 +1,6 @@
 #include <ros/ros.h>
 #include <boost/shared_ptr.hpp>
 
-// Ensure this is defined before boost since mongodb uses version
-// 2 and both cannot be simulataneously defined.
-#define BOOST_FILESYSTEM_VERSION 2
-
 // MoveIt
 #include <moveit/rdf_loader/rdf_loader.h>
 #include <urdf/model.h>
@@ -17,16 +13,17 @@
 #include <moveit/move_group_interface/move_group.h>
 
 #include <tf/transform_listener.h>
-#include <mongodb_store/message_store.h>
-#include <kinematics_cache/IK.h>
-#include <kinematics_cache/IKQuery.h>
+#include <kinematics_cache/IKv2.h>
+#include <kinematics_cache/IKQueryv2.h>
 #include <boost/math/constants/constants.hpp>
+#include <kinematics_cache/OcTreeJointAngles.h>
 
 namespace {
 using namespace std;
-using namespace mongodb_store;
+using namespace kinematics_cache;
+using namespace octomap;
 
-static const double RESOLUTION_DEFAULT = 0.01;
+static const double RESOLUTION_DEFAULT = 0.02;
 static const double IK_SEARCH_RESOLUTION_DEFAULT = 0.01;
 static const double MAX_VELOCITY = 100;
 static const double MAX_ACCELERATION = 100;
@@ -64,15 +61,7 @@ private:
 
     kinematics::KinematicsBasePtr kinematicsSolver;
 
-    robot_state::RobotStatePtr kinematicState;
-
     const robot_model::JointModelGroup* jointModelGroup;
-
-    vector<double> basePositions;
-
-    vector<double> jointMaxVelocities;
-
-    vector<double> jointMaxAccelerations;
 
     ros::Publisher searchPub;
 
@@ -92,7 +81,7 @@ public:
         pnh.param<bool>("move_arm_to_base", moveArmToBase, false);
 
         ros::service::waitForService("/kinematics_cache/ik");
-        ik = nh.serviceClient<kinematics_cache::IKQuery>("/kinematics_cache/ik", true /* persistent */);
+        ik = nh.serviceClient<kinematics_cache::IKQueryv2>("/kinematics_cache/ik", true /* persistent */);
 
         searchPub = nh.advertise<visualization_msgs::Marker>("search_position", 10);
         kinematicsLoader.reset(new pluginlib::ClassLoader<kinematics::KinematicsBase>("moveit_core", "kinematics::KinematicsBase"));
@@ -114,72 +103,7 @@ public:
         kinematicModel.reset(new robot_model::RobotModel(urdfModel, srdf));
 
         jointModelGroup =  kinematicModel->getJointModelGroup(kinematicsSolver->getGroupName());
-        kinematicState.reset(new robot_state::RobotState(kinematicModel));
-
-        // TODO: Make base positions configurable
-        basePositions.resize(jointModelGroup->getActiveJointModels().size());
-
-        // Load limit data
-        ROS_DEBUG("Loading joint limits");
-        for (unsigned int i = 0; i < jointModelGroup->getActiveJointModels().size(); ++i) {
-            const string& jointName = jointModelGroup->getActiveJointModels()[i]->getName();
-            const string prefix = "robot_description_planning/joint_limits/" + jointName + "/";
-            ROS_DEBUG_NAMED("kinematics_cache_loader", "Loading velocity and accleration limits for joint %s", jointName.c_str());
-
-            bool has_vel_limits;
-            double max_velocity;
-            if (nh.getParam(prefix + "has_velocity_limits", has_vel_limits) && has_vel_limits && nh.getParam(prefix + "max_velocity", max_velocity)) {
-                ROS_DEBUG_NAMED("kinematics_cache_loader", "Setting max velocity to %f", max_velocity);
-                jointMaxVelocities.push_back(max_velocity);
-            } else {
-                ROS_DEBUG_NAMED("kinematics_cache_loader", "Setting max velocity to default");
-                jointMaxVelocities.push_back(MAX_VELOCITY);
-            }
-
-            bool has_acc_limits;
-            double max_acc;
-            if (nh.getParam(prefix + "has_acceleration_limits", has_acc_limits) && has_acc_limits && nh.getParam(prefix + "max_acceleration", max_acc)) {
-                ROS_DEBUG_NAMED("ikfast", "Setting max acceleration to %f", max_acc);
-                jointMaxAccelerations.push_back(max_acc);
-            } else {
-                ROS_DEBUG_NAMED("ikfast", "Setting max acceleration to default");
-                jointMaxAccelerations.push_back(MAX_ACCELERATION);
-            }
-        }
 	}
-
-    // TODO: This shares a lot of code with the moveit_plugin
-    ros::Duration calcExecutionTime(const vector<double>& solution) {
-        double longestTime = 0.0;
-        for(unsigned int i = 0; i < solution.size(); ++i) {
-            ROS_DEBUG_NAMED("kinematics_cache_loader", "Calculating distance for joint %u", i);
-            double d = fabs(basePositions[i] - solution[i]);
-            ROS_DEBUG_NAMED("kinematics_cache_loader", "Distance to travel is %f", d);
-
-            // Determine the max "bang-bang" distance.
-            double x = 2.0 * jointMaxVelocities[i] / jointMaxAccelerations[i];
-            double max_tri_distance = 0.5 * jointMaxVelocities[i] * x;
-            ROS_DEBUG_NAMED("kinematics_cache_loader", "Maximum triangular distance given max_vel %f and max_accel %f is %f", jointMaxVelocities[i], jointMaxAccelerations[i], max_tri_distance);
-
-            double t;
-            if (d <= max_tri_distance) {
-                t = sqrt(d / jointMaxAccelerations[i]);
-                ROS_DEBUG_NAMED("kinematics_cache_loader", "Triangular solution for t is %f", t);
-            }
-            else {
-                // Remove acceleration and deacceleration distance and calculate the trapezoidal base distance
-                double d_rect = d - max_tri_distance;
-                double x_rect = d_rect / jointMaxVelocities[i];
-                t = sqrt(max_tri_distance / jointMaxAccelerations[i]) + x_rect;
-                ROS_DEBUG_NAMED("ikfast", "Trapezoidal solution for t is %f", t);
-            }
-
-            longestTime = max(longestTime, t);
-        }
-
-        ROS_DEBUG_NAMED("kinematics_cache_loader", "Execution time is %f", longestTime);
-        return ros::Duration(longestTime);
-    }
 
     void publishSearchLocation(const string& frame, const geometry_msgs::Point& target) {
         ros::Time now = ros::Time::now();
@@ -225,7 +149,9 @@ public:
 
     void load() {
         ROS_INFO("Loading kinematics cache");
-        MessageStoreProxy mdb(nh);
+
+        OcTreeJointAngles tree(resolution);
+
         const string& searchFrame = jointModelGroup->getLinkModelNames()[0];
         ROS_INFO("Search frame for loading is %s", searchFrame.c_str());
 
@@ -294,9 +220,11 @@ public:
                     tf.transformPose(baseFrame, targetStamped, targetInBaseFrame);
 
                     // Check if the pose is in the cache.
-                    kinematics_cache::IKQuery ikQuery;
+                    kinematics_cache::IKQueryv2 ikQuery;
                     ikQuery.request.group = groupName;
-                    ikQuery.request.pose = targetInBaseFrame;
+                    ikQuery.request.point.point = targetInBaseFrame.pose.position;
+                    ikQuery.request.point.header = targetInBaseFrame.header;
+
                     if (ik.call(ikQuery)) {
                         ROS_INFO("Skipping already computed pose");
                         continue;
@@ -313,14 +241,18 @@ public:
                     }
 
                     numLoaded++;
+                    assert(solution.size() == 7);
+                    octomap::angles_t angles;
+                    for (unsigned int i = 0; i < solution.size(); ++i)
+                    {
+                        angles[i] = (float) solution[i];
+                    }
 
-                    kinematics_cache::IK msg;
-                    msg.positions = solution;
-                    msg.group = groupName;
-                    msg.pose = targetInBaseFrame;
-                    msg.execution_time = calcExecutionTime(solution);
-                    msg.simulated_execution_time = ros::Duration(MAX_EXEC_TIME);
-                    mdb.insert(msg);
+                    octomap::point3d point((float) ikQuery.request.point.point.x,
+                                   (float) ikQuery.request.point.point.y,
+                                   (float) ikQuery.request.point.point.z);
+                    OcTreeNodeJointAngles* node = tree.updateNode(point);
+                    node->setValue(angles);
                 }
             }
         }

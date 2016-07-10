@@ -1,9 +1,0 @@
-<launch>
-  <include file="$(find mongodb_store)/launch/mongodb_store.launch">
-    <arg name="db_path" value="/home/jlurz/mongodb"/>
-  </include>
-    <node pkg="kinematics_cache" type="kinematics_cache_node" name="kinematics_cache_node" output="screen">
-        <param name="resolution" value="0.02" />
-        <param name="clean" value="true"/>
-  </node>
-</launch>

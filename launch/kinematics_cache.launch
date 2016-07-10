@@ -1,10 +1,7 @@
 <launch>
-  <include file="$(find mongodb_store)/launch/mongodb_store.launch">
-    <arg name="db_path" value="/home/jlurz/mongodb"/>
-  </include>
-    <node pkg="kinematics_cache" type="kinematics_cache_node" name="kinematics_cache_node" output="screen">
-        <param name="resolution" value="0.02" />
-        <param name="clean" value="false"/>
-        <param name="max_distance" value="0.821000"/>
+  <node pkg="kinematics_cache" type="kinematics_cache_node" name="kinematics_cache_node">
+    <param name="max_distance" value="0.821000"/>
+    <param name="left_arm_data" value="/home/jlurz/octree/left_arm.ot" />
+    <param name="right_arm_data" value="/home/jlurz/octree/right_arm.ot" />
   </node>
 </launch>

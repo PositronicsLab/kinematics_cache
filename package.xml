@@ -44,30 +44,26 @@
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>mongodb_store</build_depend>
   <build_depend>eigen</build_depend>
   <build_depend>pluginlib</build_depend>
   <build_depend>moveit_core</build_depend>
-  <build_depend>rdf_loader</build_depend>
   <build_depend>moveit_ros_planning</build_depend>
   <build_depend>tf</build_depend>
   <build_depend>moveit_ros_planning_interface</build_depend>
   <build_depend>tf_conversions</build_depend>
+  <build_depend>octomap</build_depend>
   
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
-  <run_depend>mongodb_store</run_depend>
   <run_depend>eigen</run_depend>
   <run_depend>pluginlib</run_depend>
   <run_depend>moveit_core</run_depend>
-  <run_depend>rdf_loader</run_depend>
   <run_depend>moveit_ros_planning</run_depend>
-  <run_depend>pr2_moveit_ikfast_distance_right_arm_plugin</run_depend>
-  <run_depend>pr2_moveit_ikfast_distance_left_arm_plugin</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>moveit_ros_planning_interface</run_depend>
   <run_depend>tf_conversions</run_depend>
+  <run_depend>octomap</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
