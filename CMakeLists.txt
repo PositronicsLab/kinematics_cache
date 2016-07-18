@@ -52,7 +52,8 @@ find_package(Boost REQUIRED COMPONENTS system)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(   FILES
+add_message_files(
+   FILES
    IK.msg
    IKv2.msg
 )
@@ -113,8 +114,6 @@ catkin_package(
 ###########
 
 ## Specify additional locations of header files
-## Your package locations should be listed before other locations
-# include_directories(include)
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
@@ -122,40 +121,23 @@ include_directories(
 )
 add_definitions(${EIGEN_DEFINITIONS})
 
-## Add cmake target dependencies of the library
-## as an example, code may need to be generated before libraries
-## either from message generation or dynamic reconfigure
-# add_dependencies(kinematics_cache ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Declare a C++ executable
 add_executable(kinematics_cache_node src/kinematics_cache_node.cpp src/OcTreeJointAngles.cpp)
-# add_executable(oc_tree_writer src/oc_tree_writer.cpp src/OcTreeJointAngles.cpp)
-# add_executable(kinematics_cache_loader src/kinematics_cache_loader.cpp src/OcTreeJointAngles.cpp)
-
-## Add cmake target dependencies of the executable
-## same as for the library above
-# add_dependencies(kinematics_cache_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Specify libraries to link a library or executable target against
+add_dependencies(kinematics_cache_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(kinematics_cache_node
    ${catkin_LIBRARIES}
 )
 
-# target_link_libraries(kinematics_cache_loader
-#   ${catkin_LIBRARIES}
-#)
+add_executable(kinematics_cache_loader src/kinematics_cache_loader.cpp src/OcTreeJointAngles.cpp)
+add_dependencies(kinematics_cache_loader ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(kinematics_cache_loader
+   ${catkin_LIBRARIES}
+)
 
+# add_executable(oc_tree_writer src/oc_tree_writer.cpp src/OcTreeJointAngles.cpp)
+# add_dependencies(oc_tree_writer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 # target_link_libraries(oc_tree_writer
 #   ${catkin_LIBRARIES}
 # )
-
-
-# target_link_libraries(execution_time_estimator
-#   ${catkin_LIBRARIES}
-#)
-# target_link_libraries(orientation_updater
-#   ${catkin_LIBRARIES}
-#)
 
 #############
 ## Install ##

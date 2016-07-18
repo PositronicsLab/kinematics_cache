@@ -69,6 +69,25 @@ private:
 
     //! Cached IK client.
     ros::ServiceClient ik;
+
+    #if ROS_VERSION_MINIMUM(1, 10, 12)
+        // Method not required
+    #else
+    static vector<string> getActiveJointModelNames(const robot_model::JointModelGroup* jointModelGroup) {
+      vector<string> activeJointModels;
+      for (unsigned int i = 0; i < jointModelGroup->getJointModels().size(); ++i)
+      {
+         if (jointModelGroup->getJointModels()[i]->getMimic() != NULL) {
+           ROS_WARN("Passive joint model found");
+           continue;
+         }
+         activeJointModels.push_back(jointModelGroup->getJointModels()[i]->getName());
+
+      }
+      return activeJointModels;
+    }
+    #endif // ROS_VERSION_MINIMUM
+
 public:
 	KinematicsCacheLoader() :
 		pnh("~") {
@@ -105,6 +124,7 @@ public:
         jointModelGroup =  kinematicModel->getJointModelGroup(kinematicsSolver->getGroupName());
 	}
 
+private:
     void publishSearchLocation(const string& frame, const geometry_msgs::Point& target) {
         ros::Time now = ros::Time::now();
         visualization_msgs::Marker points;
@@ -125,7 +145,11 @@ public:
 
     double calculateMaxDistance(const string& searchFrame) {
         // Calculate length of arm by setting all angle to 0 and performing IK
+        #if ROS_VERSION_MINIMUM(1, 10, 12)
         vector<double> zeroPositions(jointModelGroup->getActiveJointModels().size());
+        #else
+        vector<double> zeroPositions(getActiveJointModelNames(jointModelGroup).size());
+        #endif
         vector<geometry_msgs::Pose> results;
         vector<string> endEffector;
         endEffector.push_back(tipLink);
@@ -147,6 +171,7 @@ public:
                     pow(resultInSearchFrame.pose.position.z, 2));
     }
 
+public:
     void load() {
         ROS_INFO("Loading kinematics cache");
 
@@ -155,10 +180,16 @@ public:
         const string& searchFrame = jointModelGroup->getLinkModelNames()[0];
         ROS_INFO("Search frame for loading is %s", searchFrame.c_str());
 
+ #if ROS_VERSION_MINIMUM(1, 10, 12)
+        unsigned int numActiveJoints = jointModelGroup->getActiveJointModels().size();
+#else
+        unsigned int numActiveJoints = getActiveJointModelNames(jointModelGroup).size();
+ #endif
+
         // Move to outstretched positions for easier visualization
         if (moveArmToBase) {
           moveit::planning_interface::MoveGroup group(groupName);
-          vector<double> zeroPositions(jointModelGroup->getActiveJointModels().size());
+          vector<double> zeroPositions(numActiveJoints);
           group.setJointValueTarget(zeroPositions);
           group.move();
         }
@@ -175,7 +206,7 @@ public:
         double timeout = 180;
 
         unsigned int numLoaded = 0;
-        vector<double> initialPositions(jointModelGroup->getActiveJointModels().size());
+        vector<double> initialPositions(numActiveJoints);
 
         // Frames never move so we can use a constant transform
         ros::Time now = ros::Time::now();
@@ -230,7 +261,7 @@ public:
                         continue;
                     }
 
-                    vector<double> solution(jointModelGroup->getActiveJointModels().size());
+                    vector<double> solution(numActiveJoints);
                     moveit_msgs::MoveItErrorCodes error;
                     kinematicsSolver->searchPositionIK(targetInBaseFrame.pose, initialPositions, timeout, solution, error, opts);
                     if(error.val == moveit_msgs::MoveItErrorCodes::SUCCESS) {
