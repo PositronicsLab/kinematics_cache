@@ -121,23 +121,24 @@ include_directories(
 )
 add_definitions(${EIGEN_DEFINITIONS})
 
-add_executable(kinematics_cache_node src/kinematics_cache_node.cpp src/OcTreeJointAngles.cpp)
+add_library(kinematics_cache src/kinematics_cache.cpp src/OcTreeJointAngles.cpp)
+add_dependencies(kinematics_cache ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(kinematics_cache
+   ${catkin_LIBRARIES}
+)
+
+add_executable(kinematics_cache_node src/kinematics_cache_node.cpp src/kinematics_cache.cpp src/OcTreeJointAngles.cpp)
 add_dependencies(kinematics_cache_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(kinematics_cache_node
    ${catkin_LIBRARIES}
 )
+
 
 add_executable(kinematics_cache_loader src/kinematics_cache_loader.cpp src/OcTreeJointAngles.cpp)
 add_dependencies(kinematics_cache_loader ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(kinematics_cache_loader
    ${catkin_LIBRARIES}
 )
-
-# add_executable(oc_tree_writer src/oc_tree_writer.cpp src/OcTreeJointAngles.cpp)
-# add_dependencies(oc_tree_writer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-# target_link_libraries(oc_tree_writer
-#   ${catkin_LIBRARIES}
-# )
 
 #############
 ## Install ##

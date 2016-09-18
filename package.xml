@@ -4,7 +4,7 @@
   <version>0.0.1</version>
   <description>Cache of inverse kinematics</description>
 
-  <!-- One maintainer tag required, multiple allowed, one person per tag --> 
+  <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
   <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
   <maintainer email="jlurz24@gmail.com">Joshua Lurz</maintainer>
@@ -52,7 +52,6 @@
   <build_depend>moveit_ros_planning_interface</build_depend>
   <build_depend>tf_conversions</build_depend>
   <build_depend>octomap</build_depend>
-  
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
@@ -67,7 +66,5 @@
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
-    <!-- Other tools can request additional information be placed here -->
-
   </export>
 </package>
