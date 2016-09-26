@@ -140,6 +140,12 @@ target_link_libraries(kinematics_cache_loader
    ${catkin_LIBRARIES}
 )
 
+add_executable(oc_tree_cleaner src/oc_tree_cleaner.cpp src/OcTreeJointAngles.cpp)
+add_dependencies(oc_tree_cleaner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(oc_tree_cleaner
+   ${catkin_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############

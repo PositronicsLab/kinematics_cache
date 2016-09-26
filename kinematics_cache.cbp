@@ -36,6 +36,7 @@
 		<Unit filename="LICENSE" />
 		<Unit filename="README.md" />
 		<Unit filename="include/kinematics_cache/OcTreeJointAngles.h" />
+		<Unit filename="include/kinematics_cache/kinematics_cache.h" />
 		<Unit filename="kinematics_cache.layout" />
 		<Unit filename="launch/kinematics_cache.launch" />
 		<Unit filename="launch/kinematics_cache_loader.launch" />
@@ -43,8 +44,11 @@
 		<Unit filename="msg/IK.msg" />
 		<Unit filename="msg/IKv2.msg" />
 		<Unit filename="nodelet_plugins.xml" />
+		<Unit filename="octree/left_arm.ot" />
+		<Unit filename="octree/right_arm.ot" />
 		<Unit filename="package.xml" />
 		<Unit filename="src/OcTreeJointAngles.cpp" />
+		<Unit filename="src/kinematics_cache.cpp" />
 		<Unit filename="src/kinematics_cache_loader.cpp" />
 		<Unit filename="src/kinematics_cache_node.cpp" />
 		<Unit filename="src/oc_tree_writer.cpp" />
