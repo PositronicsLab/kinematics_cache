@@ -4,11 +4,11 @@
     <arg name="db_path" value="/home/jlurz/mongodb"/>
   </include>
 
-  <!-- <node pkg="kinematics_cache" type="oc_tree_writer" name="left_arm_oc_tree_writer" output="screen">
+  <node pkg="kinematics_cache" type="oc_tree_writer" name="left_arm_oc_tree_writer" output="screen">
     <param name="arm" value="left_arm" />
     <param name="output" value="/home/jlurz/octree/left_arm.ot" />
     <param name="resolution" value="0.02" />
-  </node> -->
+  </node>
 
   <node pkg="kinematics_cache" type="oc_tree_writer" name="right_arm_oc_tree_writer" output="screen">
     <param name="arm" value="right_arm" />

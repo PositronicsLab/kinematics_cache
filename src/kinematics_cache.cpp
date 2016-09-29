@@ -14,25 +14,19 @@ using namespace kinematics_cache;
 
 static const double RESOLUTION_DEFAULT = 0.01;
 
-KinematicsCache::KinematicsCache(double aMaxDistance, const string& aBaseFrame, const string& aLeftArmDataName, const string& aRightArmDataName)
+KinematicsCache::KinematicsCache(double aMaxDistance, const string& aBaseFrame, const string& cacheName)
     : maxDistance(aMaxDistance), baseFrame(aBaseFrame)
 {
     // Read in the data
-    ROS_INFO("Loading octomap data from files [%s, %s]", aLeftArmDataName.c_str(), aRightArmDataName.c_str());
-    leftArmData.reset(dynamic_cast<OcTreeJointAngles*> (OcTreeJointAngles::read(aLeftArmDataName)));
+    ROS_INFO("Loading octomap data from file [%s]", cacheName.c_str());
+    cache.reset(dynamic_cast<OcTreeJointAngles*> (OcTreeJointAngles::read(cacheName)));
 
-    if (leftArmData.get() == NULL)
+    if (cache.get() == NULL)
     {
-        ROS_ERROR("Failed to read left arm data");
+        ROS_ERROR("Failed to read cache data");
     }
 
-    rightArmData.reset(dynamic_cast<OcTreeJointAngles*> (OcTreeJointAngles::read(aRightArmDataName)));
-    if (rightArmData.get() == NULL)
-    {
-        ROS_ERROR("Failed to read right arm data");
-    }
-
-    ROS_INFO("Cache initialized. Loaded %lu nodes to left and %lu nodes to right", leftArmData->getNumLeafNodes(), rightArmData->getNumLeafNodes());
+    ROS_INFO("Cache initialized. Loaded %lu nodes to cache", cache->getNumLeafNodes());
 }
 
 static double calcDistance(const geometry_msgs::PointStamped& point)
@@ -42,24 +36,9 @@ static double calcDistance(const geometry_msgs::PointStamped& point)
                 pow(point.point.z, 2));
 }
 
-const OcTreeJointAngles* KinematicsCache::which(const string& arm) const
+bool KinematicsCache::query(const geometry_msgs::PointStamped point, IKList& results) const
 {
-    if (arm == "left_arm")
-    {
-        return leftArmData.get();
-    }
-    else if (arm == "right_arm")
-    {
-        return rightArmData.get();
-    }
-    ROS_ERROR("Invalid arm %s", arm.c_str());
-    return NULL;
-}
-
-bool KinematicsCache::query(const std::string group,
-                           const geometry_msgs::PointStamped point, IKList& results) const
-{
-    ROS_DEBUG("Querying for group %s at position %f %f %f", group.c_str(),
+    ROS_DEBUG("Querying at position %f %f %f",
               point.point.x, point.point.y, point.point.z);
 
     // Do not perform transform, as it is a footgun for performance
@@ -76,25 +55,15 @@ bool KinematicsCache::query(const std::string group,
         return false;
     }
 
-    // Check group
-    // TODO: This could be optimized to avoid the vector
-    vector<string> groups;
-    if (group.empty())
-    {
-        queryForGroup(point, "left_arm", results);
-        queryForGroup(point, "right_arm", results);
-    }
-    else
-    {
-        queryForGroup(point, group, results);
-    }
+    queryForGroup(point, results);
+
     ROS_DEBUG("Query succeeded. Found %lu results.", results.size());
     return true;
 }
 
-void KinematicsCache::queryForGroup(const geometry_msgs::PointStamped point, const string& group, vector<IKv2>& results) const
+void KinematicsCache::queryForGroup(const geometry_msgs::PointStamped point, vector<IKv2>& results) const
 {
-    const OcTreeNodeJointAngles* node = which(group)->search(point.point.x, point.point.y, point.point.z);
+    const OcTreeNodeJointAngles* node = cache->search(point.point.x, point.point.y, point.point.z);
 
     if (node == NULL)
     {
@@ -107,7 +76,6 @@ void KinematicsCache::queryForGroup(const geometry_msgs::PointStamped point, con
         kinematics_cache::IKv2 result;
         result.positions.resize(7);
         result.point = point;
-        result.group = group;
         for (unsigned int i = 0; i < 7; ++i)
         {
             result.positions[i] = node->getValue()[i + 1 + k * octomap::NUM_JOINTS];

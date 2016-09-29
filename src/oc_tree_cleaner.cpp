@@ -78,7 +78,7 @@ public:
                         if (i == k - 1){
                             --k;
                         } else {
-                            // TODO: Move entries.
+                            // TODO: Move entries. Move k - 1 to i.
                         }
                         ++updates;
                         break;

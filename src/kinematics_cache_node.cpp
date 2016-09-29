@@ -23,6 +23,9 @@ private:
 
     auto_ptr<KinematicsCache> cache;
 
+    //! Service name
+    string serviceName;
+
 public:
     KinematicsCacheNode() :
         pnh("~")
@@ -33,19 +36,14 @@ public:
         string baseFrame;
         pnh.param<string>("base_frame", baseFrame, "/torso_lift_link");
 
-        ikService = nh.advertiseService("/kinematics_cache/ik",
-                                        &KinematicsCacheNode::query, this);
+        ikService = nh.advertiseService("/kinematics_cache/ik", &KinematicsCacheNode::query, this);
 
-        string leftArmDataName;
-        pnh.param<string>("left_arm_data", leftArmDataName, "./octree/left_arm.ot");
+        string cacheName;
+        if (!pnh.getParam("cache_name", cacheName)) {
+            ROS_ERROR("Cache name must be specified");
+        }
 
-        string rightArmDataName;
-        pnh.param<string>("right_arm_data", rightArmDataName, "./octree/right_arm.ot");
-
-        // Read in the data
-        ROS_INFO("Loading octomap data from files [%s, %s]", leftArmDataName.c_str(), rightArmDataName.c_str());
-
-        cache.reset(new KinematicsCache(maxDistance, baseFrame, leftArmDataName, rightArmDataName));
+        cache.reset(new KinematicsCache(maxDistance, baseFrame, cacheName));
 
         ROS_INFO("Service initialized");
     }
@@ -57,7 +55,7 @@ public:
     {
 
         IKList results;
-        if (!cache->query(req.group, req.point, results))
+        if (!cache->query(req.point, results))
         {
             ROS_DEBUG("Failed to find IK result for service call");
             return false;

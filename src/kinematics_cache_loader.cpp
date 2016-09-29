@@ -99,8 +99,11 @@ public:
         pnh.param<string>("tip_link", tipLink, "r_wrist_roll_link");
         pnh.param<bool>("move_arm_to_base", moveArmToBase, false);
 
-        ros::service::waitForService("/kinematics_cache/ik");
-        ik = nh.serviceClient<kinematics_cache::IKQueryv2>("/kinematics_cache/ik", true /* persistent */);
+        string cacheServiceName;
+        pnh.param<string>("cache_service_name", cacheServiceName, "/kinematics_cache/ik");
+
+        ros::service::waitForService(cacheServiceName);
+        ik = nh.serviceClient<kinematics_cache::IKQueryv2>(cacheServiceName, true /* persistent */);
 
         searchPub = nh.advertise<visualization_msgs::Marker>("search_position", 10);
         kinematicsLoader.reset(new pluginlib::ClassLoader<kinematics::KinematicsBase>("moveit_core", "kinematics::KinematicsBase"));
@@ -252,7 +255,6 @@ public:
 
                     // Check if the pose is in the cache.
                     kinematics_cache::IKQueryv2 ikQuery;
-                    ikQuery.request.group = groupName;
                     ikQuery.request.point.point = targetInBaseFrame.pose.position;
                     ikQuery.request.point.header = targetInBaseFrame.header;
 
