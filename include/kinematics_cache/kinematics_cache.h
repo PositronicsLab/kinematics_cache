@@ -27,7 +27,7 @@ private:
 public:
     KinematicsCache(double aMaxDistance, const std::string& aBaseFrame, const std::string& cacheName);
     bool query(const geometry_msgs::PointStamped point, IKList& results) const;
-
+    bool list(IKList& results) const;
 private:
     void queryForGroup(const geometry_msgs::PointStamped point, std::vector<IKv2>& results) const;
 };

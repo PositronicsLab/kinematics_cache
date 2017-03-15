@@ -61,6 +61,24 @@ bool KinematicsCache::query(const geometry_msgs::PointStamped point, IKList& res
     return true;
 }
 
+bool KinematicsCache::list(IKList& results) const {
+    ROS_INFO("Listing all %lu cache nodes", cache->getNumLeafNodes());
+    for (octomap::OcTreeJointAngles::leaf_iterator i = cache->begin_leafs(); i != cache->end_leafs(); ++i) {
+        // No stored data
+        if (i->getValue()[0] == 0) {
+            continue;
+        }
+
+        kinematics_cache::IKv2 result;
+        result.point.point.x = i.getX();
+        result.point.point.y = i.getY();
+        result.point.point.z = i.getZ();
+        results.push_back(result);
+    }
+    ROS_DEBUG("Listing nodes complete");
+    return true;
+}
+
 void KinematicsCache::queryForGroup(const geometry_msgs::PointStamped point, vector<IKv2>& results) const
 {
     const OcTreeNodeJointAngles* node = cache->search(point.point.x, point.point.y, point.point.z);
