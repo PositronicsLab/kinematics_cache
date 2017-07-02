@@ -1,0 +1,13 @@
+<launch>
+  <node pkg="kinematics_cache" type="oc_tree_copier" name="left_arm_oc_tree_copier" output="screen">
+    <param name="resolution" value="0.02" />
+    <param name="input" value="$(find kinematics_cache)/octree/left_arm.cleaned.ot" />
+    <param name="output" value="/home/jlurz/catkin_ws/src/kinematics_cache/octree/left_arm.copied.ot" />
+  </node>
+
+  <node pkg="kinematics_cache" type="oc_tree_copier" name="right_arm_oc_tree_copier" output="screen">
+    <param name="resolution" value="0.02" />
+    <param name="input" value="$(find kinematics_cache)/octree/right_arm.cleaned.ot" />
+    <param name="output" value="/home/jlurz/catkin_ws/src/kinematics_cache/octree/right_arm.copied.ot" />
+  </node>
+</launch>

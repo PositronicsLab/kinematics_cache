@@ -1,0 +1,20 @@
+<launch>
+    <include file="$(find pr2_machine)/$(env ROBOT).machine" />
+    <include file="$(find pr2_moveit_config)/launch/move_group.launch" />
+
+    <node pkg="kinematics_cache" type="kinematics_cache_fk_loader" name="kinematics_cache_fk_loader_right" output="screen">
+      <param name="group_name" value="right_arm" />
+      <param name="base_frame" value="/torso_lift_link" />
+      <param name="input" value="$(find kinematics_cache)/octree/right_arm.copied.ot" />
+      <param name="output" value="/home/jlurz/catkin_ws/src/kinematics_cache/octree/right_arm.added.ot" />
+      <param name="endEffectorFrame" value="r_wrist_roll_link" />
+    </node>
+
+    <node pkg="kinematics_cache" type="kinematics_cache_fk_loader" name="kinematics_cache_fk_loader_left" output="screen">
+      <param name="group_name" value="left_arm" />
+      <param name="base_frame" value="/torso_lift_link" />
+      <param name="input" value="$(find kinematics_cache)/octree/left_arm.copied.ot" />
+      <param name="output" value="/home/jlurz/catkin_ws/src/kinematics_cache/octree/left_arm.added.ot" />
+      <param name="endEffectorFrame" value="l_wrist_roll_link" />
+    </node>
+</launch>

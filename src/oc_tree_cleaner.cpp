@@ -131,9 +131,11 @@ private:
 public:
     void clean()
     {
-
+        ROS_INFO("Loading oc_tree from source %s", input.c_str());
         // Load the octtree
         auto_ptr<OcTreeJointAngles> tree(dynamic_cast<OcTreeJointAngles*> (OcTreeJointAngles::read(input)));
+
+        ROS_INFO("Tree loaded successfully containing %lu nodes", tree->getNumLeafNodes());
 
         unsigned int updates = 0;
         unsigned int validEntries = 0;
@@ -256,7 +258,7 @@ public:
             tree->write(output);
         }
 
-        ROS_INFO("Cleanup complete. Cleaned %u entries", updates);
+        ROS_INFO("Cleanup complete. Cleaned %u entries and kept %u valid entries", updates, validEntries);
     }
 };
 }

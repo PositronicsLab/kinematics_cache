@@ -8,7 +8,7 @@
 namespace octomap
 {
 
-static const unsigned int MAX_SOLUTIONS = 10;
+static const unsigned int MAX_SOLUTIONS = 100;
 static const unsigned int NUM_JOINTS = 7;
 
 typedef boost::array<float, NUM_JOINTS * MAX_SOLUTIONS + 1> angles_t;
@@ -46,7 +46,7 @@ public:
     virtual OcTreeNodeJointAngles* updateNode(const point3d& value);
     OcTreeNodeJointAngles* updateNode(const OcTreeKey& k);
     OcTreeJointAngles* create() const {return new OcTreeJointAngles(resolution); }
-    std::string getTreeType() const {return "OcTreeNodeJointAngles";}
+    std::string getTreeType() const {return "OcTreeNodeJointAngles2";}
 protected:
     /**
      * Static member object which ensures that this OcTree's prototype
