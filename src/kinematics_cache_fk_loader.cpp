@@ -140,7 +140,6 @@ public:
                                 kinematicState->enforceBounds();
                                 kinematicState->updateLinkTransforms();
 
-                                assert(kinematicState->knowsTransform(endEffectorFrame));
                                 const Eigen::Affine3d& endEffectorPosition = kinematicState->getFrameTransform(endEffectorFrame);
 
                                 ROS_DEBUG("Computed FK value in global frame of [%f %f %f]", endEffectorPosition.translation().x(), endEffectorPosition.translation().y(), endEffectorPosition.translation().z());
