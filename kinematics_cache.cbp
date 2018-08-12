@@ -46,7 +46,6 @@
 		<Unit filename="launch/oc_tree_writer.launch" />
 		<Unit filename="msg/IK.msg" />
 		<Unit filename="msg/IKv2.msg" />
-		<Unit filename="nodelet_plugins.xml" />
 		<Unit filename="octree/left_arm.added.cleaned.ot" />
 		<Unit filename="octree/left_arm.cleaned.ot" />
 		<Unit filename="octree/left_arm.ot" />
